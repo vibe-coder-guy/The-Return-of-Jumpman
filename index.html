@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Donkey Bong: The Return of Jumpman</title>
+  <title>Donkey Gong: The Return of Jumpman</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
@@ -12,7 +12,7 @@
 </head>
 <body>
   <canvas id="c"></canvas>
-  <div id="info">WASD/Arrows=Move &nbsp;|&nbsp; Space/Up/W=Jump &nbsp;|&nbsp; Q=Shoot &nbsp;|&nbsp; Stomp donkeys &nbsp;|&nbsp; Red mushroom=Grow &nbsp;|&nbsp; Blue mushroom=DB Boss! &nbsp;|&nbsp; M=Mute &nbsp;|&nbsp; Esc=Pause</div>
+  <div id="info">WASD/Arrows=Move &nbsp;|&nbsp; Space/Up/W=Jump &nbsp;|&nbsp; Q=Shoot &nbsp;|&nbsp; Stomp donkeys &nbsp;|&nbsp; Red mushroom=Grow &nbsp;|&nbsp; Blue mushroom=DG Boss! &nbsp;|&nbsp; M=Mute &nbsp;|&nbsp; Esc=Pause</div>
   <script>
 'use strict';
 
@@ -374,7 +374,7 @@ const LEVELS = [
   },
 
   // ── LEVEL 5 ─────────────────────────────────
-  // Hardest. Blue mushroom near end triggers giant DB boss.
+  // Hardest. Blue mushroom near end triggers giant DG boss.
   {
     LW: 420,
     gaps: [
@@ -587,8 +587,8 @@ function doHammerSwing() {
   // Contact kill handled in main donkey collision loop (player.hammerTimer > 0)
 }
 
-// ── DB Boss ────────────────────────────────────
-function spawnDBBoss(spawnX) {
+// ── DG Boss ────────────────────────────────────
+function spawnDGBoss(spawnX) {
   const bx = Math.min(spawnX, (LW - 8) * TILE);
   dbBoss = {
     x: bx, y: (GROUND_Y - 1) * TILE - 56,
@@ -680,7 +680,7 @@ function spawnMinion() {
   spawnParticles(m.x + m.w/2, m.y, 8, '#cc7700');
 }
 
-function updateDBBoss() {
+function updateDGBoss() {
   if (!dbBoss) return;
   if (!dbBoss.alive) { if (dbBoss.dying > 0) dbBoss.dying--; return; }
 
@@ -756,7 +756,7 @@ function updateDBBoss() {
           dbBoss.alive = false; dbBoss.dying = 60;
           sfxWin(); sfxBossRoar();
           spawnParticles(dbBoss.x + dbBoss.w/2, dbBoss.y + dbBoss.h/2, 40, '#ff6600');
-          spawnFloatingText(dbBoss.x + dbBoss.w/2, dbBoss.y - 20, 'DB DEFEATED!', '#ffff00');
+          spawnFloatingText(dbBoss.x + dbBoss.w/2, dbBoss.y - 20, 'DG DEFEATED!', '#ffff00');
           score += 5000;
         } else {
           spawnFloatingText(dbBoss.x + dbBoss.w/2, dbBoss.y - 8, `${dbBoss.hp} LEFT! RAGE!`, '#ff4400');
@@ -794,7 +794,7 @@ function updateBarrels() {
   }
 }
 
-function drawDBBoss() {
+function drawDGBoss() {
   if (!dbBoss) return;
   if (!dbBoss.alive && dbBoss.dying <= 0) return;
   const sx = Math.round(dbBoss.x - camera.x), sy = Math.round(dbBoss.y);
@@ -835,13 +835,13 @@ function drawDBBoss() {
   // Tail
   px(48,28,10,6,'#aa5500'); px(54,34,8,8,'#aa5500');
 
-  // "DB" bandana — color shifts red→orange with rage
+  // "DG" bandana — color shifts red→orange with rage
   const bandanaR = Math.min(255, 200 + dbBoss.rage * 6);
   const bandanaG = Math.max(0,   30  - dbBoss.rage * 3);
   px(2, 2, 42, 10, `rgb(${bandanaR},${bandanaG},0)`);
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 9px monospace';
-  ctx.fillText('DB', 14, 10);
+  ctx.fillText('DG', 14, 10);
 
   // Shield spike icon when active (drawn in boss-local coords)
   if (dbBoss.shield > 0) {
@@ -1013,8 +1013,8 @@ function update() {
   // Win
   if (player.x > (LW - 3) * TILE) {
     if (currentLevel === 4 && (!dbBoss || dbBoss.alive)) {
-      // Level 5: must collect blue mushroom and defeat DB boss first
-      const msg = !dbBoss ? 'FIND THE BLUE MUSHROOM!' : 'DEFEAT DB BOSS!';
+      // Level 5: must collect blue mushroom and defeat DG boss first
+      const msg = !dbBoss ? 'FIND THE BLUE MUSHROOM!' : 'DEFEAT DG BOSS!';
       spawnFloatingText(player.x + player.w/2, player.y - 16, msg, '#ff0000');
     } else {
       sfxWin(); bgmStop();
@@ -1186,15 +1186,15 @@ function update() {
       } else if (pu.kind === 'blueMushroom') {
         if (player.big) shrinkPlayer();
         spawnParticles(pu.x+pu.w/2, pu.y+pu.h/2, 14, '#0088ff');
-        spawnFloatingText(pu.x+pu.w/2, pu.y, 'DB BOSS!', '#ff0000');
-        spawnDBBoss(pu.x + 200);
+        spawnFloatingText(pu.x+pu.w/2, pu.y, 'DG BOSS!', '#ff0000');
+        spawnDGBoss(pu.x + 200);
       }
     }
   }
 
-  // DB Boss + barrels
+  // DG Boss + barrels
   if (state === 'playing') {
-    updateDBBoss();
+    updateDGBoss();
     updateBarrels();
   }
 
@@ -1451,7 +1451,7 @@ function drawFlag() {
   if (fx < -40 || fx > W+40) return;
   const groundY = GROUND_Y*TILE;
   if (currentLevel === 4) {
-    // Level 5: princess only shown after DB boss is spawned AND defeated
+    // Level 5: princess only shown after DG boss is spawned AND defeated
     if (!dbBoss || dbBoss.alive) return;
     const py = groundY - 32;
     // Dress (#00FF00 green)
@@ -1580,7 +1580,7 @@ function drawLevelSelect() {
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
   drawTitle();
   txt('SELECT LEVEL', W/2-100, 148, 22, '#ffffff', true);
-  const names = ['LEVEL 1 — The Beginning','LEVEL 2 — Faster & Wider','LEVEL 3 — Brutal Gauntlet','LEVEL 4 — Maximum Donkey','LEVEL 5 — DB Final Boss'];
+  const names = ['LEVEL 1 — The Beginning','LEVEL 2 — Faster & Wider','LEVEL 3 — Brutal Gauntlet','LEVEL 4 — Maximum Donkey','LEVEL 5 — DG Final Boss'];
   for (let i = 0; i < LEVELS.length; i++) {
     const locked = i >= unlockedLevels, selected = i === menuSelection;
     const y = 172 + i*36;
@@ -1724,7 +1724,7 @@ const TUTORIAL_PAGES = [
       ['Reach the end', 'Get to the flag to win'],
       ['Collect coins', '+10 points each'],
       ['Stomp donkeys', '+200 points each'],
-      ['Level 5 only', 'Collect blue mushroom → fight DB boss!'],
+      ['Level 5 only', 'Collect blue mushroom → fight DG boss!'],
     ],
     tip: 'Beat all 5 levels to rescue the princess!',
     tipCol: '#ff88ff',
@@ -1808,7 +1808,7 @@ function render() {
   for (const fb of fireballs) drawFireball(fb);
   for (const d of donkeys)  drawDonkey(d);
   drawBarrels();
-  drawDBBoss();
+  drawDGBoss();
   drawParticles();
   drawFloatingTexts();
   drawPlayer();
