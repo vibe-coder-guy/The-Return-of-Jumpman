@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>The Return of Jumpman</title>
+  <title>Donkey Bong: The Return of Jumpman</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
@@ -12,7 +12,7 @@
 </head>
 <body>
   <canvas id="c"></canvas>
-  <div id="info">Arrow Keys / WASD = Move &nbsp;|&nbsp; Space / Up / W = Jump &nbsp;|&nbsp; Stomp donkeys from above &nbsp;|&nbsp; Fall = instant death &nbsp;|&nbsp; M = Mute</div>
+  <div id="info">WASD/Arrows=Move &nbsp;|&nbsp; Space/Up/W=Jump &nbsp;|&nbsp; Q=Shoot &nbsp;|&nbsp; Stomp donkeys &nbsp;|&nbsp; Red mushroom=Grow &nbsp;|&nbsp; Blue mushroom=DB Boss! &nbsp;|&nbsp; M=Mute &nbsp;|&nbsp; Esc=Pause</div>
   <script>
 'use strict';
 
@@ -22,9 +22,6 @@ canvas.width = W; canvas.height = H;
 canvas.style.width = '960px'; canvas.style.height = '540px';
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
-
-const playerImg = new Image();
-playerImg.src = 'jumpman.png';
 
 const platformImg = new Image();
 platformImg.src = 'platform.png';
@@ -42,11 +39,8 @@ function initAudio() {
   masterGain.gain.value = 0.6;
   masterGain.connect(audioCtx.destination);
   if (!musicConnected) {
-    try {
-      const src = audioCtx.createMediaElementSource(bgMusic);
-      src.connect(masterGain);
-      musicConnected = true;
-    } catch(e) {}
+    try { const src = audioCtx.createMediaElementSource(bgMusic); src.connect(masterGain); musicConnected = true; }
+    catch(e) {}
   }
 }
 function bgmPlay() { if (bgMusic) bgMusic.play().catch(() => {}); }
@@ -64,14 +58,13 @@ function sfx(freq, dur, type, sweep, vol) {
   g.gain.linearRampToValueAtTime(0, t + dur);
   o.start(t); o.stop(t + dur + 0.01);
 }
-function sfxJump()  { sfx(200, 0.08, 'square', 600, 0.25); }
-function sfxLand()  { sfx(120, 0.05, 'square', 120, 0.3); }
+function sfxJump()        { sfx(200, 0.08, 'square', 600, 0.25); }
+function sfxLand()        { sfx(120, 0.05, 'square', 120, 0.3); }
 function sfxStomp() {
   sfx(300, 0.04, 'square', 300, 0.5);
   if (!audioCtx) return;
   const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-  o.connect(g); g.connect(masterGain);
-  o.type = 'square';
+  o.connect(g); g.connect(masterGain); o.type = 'square';
   const t = audioCtx.currentTime + 0.04;
   o.frequency.setValueAtTime(80, t);
   g.gain.setValueAtTime(0.5, t); g.gain.linearRampToValueAtTime(0, t + 0.06);
@@ -81,8 +74,7 @@ function sfxCoin() {
   sfx(660, 0.04, 'square', 660, 0.2);
   if (!audioCtx) return;
   const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-  o.connect(g); g.connect(masterGain);
-  o.type = 'square'; o.frequency.value = 880;
+  o.connect(g); g.connect(masterGain); o.type = 'square'; o.frequency.value = 880;
   const t = audioCtx.currentTime + 0.04;
   g.gain.setValueAtTime(0.2, t); g.gain.linearRampToValueAtTime(0, t + 0.04);
   o.start(t); o.stop(t + 0.05);
@@ -91,8 +83,7 @@ function sfxDeath() {
   if (!audioCtx) return;
   [440, 330, 220, 110].forEach((f, i) => {
     const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-    o.connect(g); g.connect(masterGain);
-    o.type = 'square'; o.frequency.value = f;
+    o.connect(g); g.connect(masterGain); o.type = 'square'; o.frequency.value = f;
     const t = audioCtx.currentTime + i * 0.09;
     g.gain.setValueAtTime(0.3, t); g.gain.linearRampToValueAtTime(0, t + 0.08);
     o.start(t); o.stop(t + 0.09);
@@ -103,8 +94,7 @@ function sfxWin() {
   if (!audioCtx) return;
   [523, 659, 784, 1047].forEach((f, i) => {
     const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-    o.connect(g); g.connect(masterGain);
-    o.type = 'square'; o.frequency.value = f;
+    o.connect(g); g.connect(masterGain); o.type = 'square'; o.frequency.value = f;
     const t = audioCtx.currentTime + i * 0.11;
     g.gain.setValueAtTime(0.25, t); g.gain.linearRampToValueAtTime(0, t + 0.1);
     o.start(t); o.stop(t + 0.12);
@@ -115,6 +105,42 @@ function sfxDonkeyGrunt() {
   lastGruntTime = Date.now();
   sfx(80, 0.08, 'square', 80, 0.12);
 }
+function sfxGrow() {
+  if (!audioCtx) return;
+  [220,330,440,550,660].forEach((f,i) => {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(masterGain); o.type = 'square'; o.frequency.value = f;
+    const t = audioCtx.currentTime + i*0.06;
+    g.gain.setValueAtTime(0.2, t); g.gain.linearRampToValueAtTime(0, t+0.05);
+    o.start(t); o.stop(t+0.06);
+  });
+}
+function sfxShrink() {
+  if (!audioCtx) return;
+  [660,440,330,220,110].forEach((f,i) => {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(masterGain); o.type = 'square'; o.frequency.value = f;
+    const t = audioCtx.currentTime + i*0.05;
+    g.gain.setValueAtTime(0.2, t); g.gain.linearRampToValueAtTime(0, t+0.045);
+    o.start(t); o.stop(t+0.05);
+  });
+}
+function sfxFireball() { sfx(440, 0.04, 'square', 880, 0.2); }
+function sfxIceball()  { sfx(600, 0.04, 'triangle', 300, 0.2); }
+function sfxFireHit()  { sfx(200, 0.1, 'square', 60, 0.3); }
+function sfxIceHit()   { sfx(800, 0.08, 'triangle', 200, 0.25); }
+function sfxHammerSwing() { sfx(80, 0.15, 'square', 40, 0.5); sfx(200, 0.08, 'square', 100, 0.3); }
+function sfxHammerPickup() { sfx(300, 0.05, 'square', 500, 0.3); sfx(500, 0.05, 'square', 700, 0.3); }
+function sfxPowerup() {
+  sfx(440, 0.06, 'square', 880, 0.3);
+  if (!audioCtx) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.connect(g); g.connect(masterGain); o.type = 'square';
+  const t = audioCtx.currentTime + 0.07;
+  o.frequency.setValueAtTime(660, t); o.frequency.linearRampToValueAtTime(1100, t+0.1);
+  g.gain.setValueAtTime(0.25, t); g.gain.linearRampToValueAtTime(0, t+0.1);
+  o.start(t); o.stop(t+0.11);
+}
 
 // ── Keys ───────────────────────────────────────
 const keys = {};
@@ -122,178 +148,789 @@ addEventListener('keydown', e => {
   keys[e.code] = true;
   if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
   initAudio();
-  if (e.code === 'KeyM') {
-    muted = !muted;
-    if (masterGain) masterGain.gain.value = muted ? 0 : 0.6;
+  if (e.code === 'KeyM') { muted = !muted; if (masterGain) masterGain.gain.value = muted ? 0 : 0.6; }
+  if (e.code === 'Escape') {
+    if (state === 'playing') { state = 'paused'; pauseSelection = 0; bgMusic.pause(); }
+    else if (state === 'paused') { state = 'playing'; bgmPlay(); }
+  }
+  if (e.code === 'KeyQ' && state === 'playing' && player && player.power && player.fireballCooldown <= 0) {
+    shootFireball();
   }
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 
-const GRAV = 0.52;
+const GRAV = 0.75;
 const TILE = 16;
-const LW   = 230;
 const LH   = 23;
 const GROUND_Y = 19;
 
-const tiles = new Uint8Array(LW * LH);
+// ── Level definitions ──────────────────────────
+// Gap physics: max jump distance same-height = ~120px = 7.5 tiles
+// Safe max gap: 5 tiles (80px). For 6-tile gaps: platform bridge at y=16 (3 tiles high, easily reachable).
+// Platform heights: y=14-17. y=14 = 5 tiles high (reachable in ~14-36 frame window). y=16 = 3 tiles high (easy).
+
+const GY = GROUND_Y;
+
+const LEVELS = [
+  // ── LEVEL 1 ─────────────────────────────────
+  {
+    LW: 230,
+    gaps: [
+      [13,16],[24,26],[33,37],[44,47],[54,58],
+      [66,70],[78,82],[89,93],[100,104],[110,113],[119,123],
+      [130,134],[139,142],[147,151],[156,159],[165,169],[174,177],
+      [182,186],[190,193],[199,203],[207,210],[214,217],[221,224],[227,228],
+    ],
+    plats: [
+      [5,17,5],[17,16,4],[34,16,3],[45,15,3],[55,16,4],
+      [67,15,4],[79,14,4],[90,15,4],[101,15,3],[111,13,3],[120,15,3],
+      [131,15,3],[140,13,3],[148,15,3],[157,13,3],[166,14,3],[175,13,3],
+      [183,15,3],[191,13,3],[200,14,3],[208,13,3],[215,15,3],[222,13,3],[225,16,4],
+    ],
+    // ≤5 donkeys in first 35 tiles (activation radius)
+    donkeySpots: [
+      [8,GY],[20,GY],
+      [30,GY],[38,16],[46,15],[56,16],
+      [62,GY],[68,15],[74,GY],[80,14],[91,15],
+      [96,GY],[102,15],[108,GY],[112,13],[121,15],
+      [127,GY],[132,15],[137,GY],[141,13],
+      [149,15],[154,GY],[158,13],
+      [162,GY],[167,14],[171,GY],[176,13],
+      [179,GY],[184,15],[192,13],
+      [196,GY],[201,14],[205,GY],[209,13],
+      [213,GY],[216,15],[219,GY],[223,13],
+      [226,16],[228,GY],
+    ],
+    coinSpots: [
+      [6,16],[7,16],[8,16],[18,15],[19,15],
+      [35,15],[36,15],[46,14],[47,14],[56,15],[57,15],
+      [68,14],[69,14],[80,13],[81,13],[91,14],[92,14],
+      [102,14],[112,12],[113,12],[121,14],[122,14],
+      [132,14],[133,14],[141,12],[142,12],[149,14],[158,12],
+      [167,13],[168,13],[176,12],[177,12],[184,14],[192,12],
+      [201,13],[202,13],[209,12],[210,12],[216,14],[222,12],
+      [226,15],[227,15],
+    ],
+    powerupSpots: [
+      [9,18,'redFlower'],
+      [19,14,'redMushroom'],
+      [36,14,'iceFlower'],
+      [57,14,'hammer'],
+      [80,13,'redMushroom'],
+      [91,13,'redFlower'],
+      [120,14,'redMushroom'],
+      [131,13,'iceFlower'],
+      [166,13,'hammer'],
+      [183,14,'redMushroom'],
+      [200,13,'redFlower'],
+    ],
+    donkeySpeed: [1.2, 0.6],
+    donkeyJump: -10.5,
+  },
+
+  // ── LEVEL 2 ─────────────────────────────────
+  // All gaps 4-5 tiles. Platforms y=14-17 bridge every gap. Physically possible.
+  // ≤3 donkeys in first 35 tiles.
+  {
+    LW: 255,
+    gaps: [
+      [10,13],[21,25],[33,37],[45,49],[57,61],
+      [69,73],[81,85],[93,97],[105,109],[117,121],
+      [129,133],[141,145],[153,157],[165,169],[177,181],
+      [189,193],[201,205],[213,217],[225,229],[237,241],[248,250],
+    ],
+    plats: [
+      [8,17,4],[19,16,3],[31,16,3],[43,15,3],[55,16,3],
+      [67,15,3],[79,15,3],[91,14,3],[103,15,3],[115,14,3],
+      [127,15,3],[139,14,3],[151,15,3],[163,14,3],[175,15,3],
+      [187,14,3],[199,15,3],[211,14,3],[223,15,3],[235,14,3],[246,16,3],
+    ],
+    // Only 3 donkeys in first 35 tiles (tiles 0-34)
+    donkeySpots: [
+      [5,GY],[16,GY],[27,GY],
+      [38,GY],[46,15],[58,GY],[70,15],[82,GY],[94,14],
+      [106,GY],[118,14],[130,GY],[142,14],[154,GY],[166,14],
+      [178,GY],[190,14],[202,GY],[214,14],[226,GY],[238,14],[249,GY],
+    ],
+    coinSpots: [
+      [7,18],[11,18],[20,15],[34,15],[46,14],[58,15],
+      [70,14],[82,14],[94,13],[106,14],[118,13],[130,14],
+      [142,13],[154,14],[166,13],[178,14],[190,13],[202,14],
+      [214,13],[226,14],[238,13],[247,15],
+    ],
+    powerupSpots: [
+      [6,18,'redFlower'],
+      [20,14,'redMushroom'],
+      [32,15,'iceFlower'],
+      [58,14,'hammer'],
+      [79,14,'redMushroom'],
+      [94,13,'redFlower'],
+      [130,14,'iceFlower'],
+      [151,14,'redMushroom'],
+      [166,13,'hammer'],
+      [202,14,'redFlower'],
+      [222,14,'redMushroom'],
+      [238,13,'iceFlower'],
+    ],
+    donkeySpeed: [1.7, 0.7],
+    donkeyJump: -11.0,
+  },
+
+  // ── LEVEL 3 ─────────────────────────────────
+  // Gaps 4-6 tiles. All 6-tile gaps have y=16 platform bridge. Physically possible but harder.
+  // ≤3 donkeys in first 35 tiles.
+  {
+    LW: 315,
+    gaps: [
+      [8,12],[19,24],[31,36],[43,48],[55,60],[67,72],
+      [79,84],[91,96],[103,108],[115,120],[127,132],[139,144],
+      [151,156],[163,168],[175,180],[187,192],[199,204],[211,216],
+      [223,228],[235,240],[247,252],[259,264],[271,276],[283,288],
+      [295,300],[307,311],[313,314],
+    ],
+    plats: [
+      [6,17,3],[17,16,3],[29,16,3],[41,15,3],[53,15,3],[65,15,3],
+      [77,15,3],[89,14,3],[101,15,3],[113,14,3],[125,15,3],[137,14,3],
+      [149,15,3],[161,14,3],[173,15,3],[185,14,3],[197,15,3],[209,14,3],
+      [221,15,3],[233,14,3],[245,15,3],[257,14,3],[269,15,3],[281,14,3],
+      [293,15,3],[305,14,3],[311,16,3],
+    ],
+    // Only 3 in first 35 tiles
+    donkeySpots: [
+      [4,GY],[14,GY],[26,GY],
+      [37,GY],[49,15],[61,GY],[73,15],[85,GY],[97,14],
+      [109,GY],[121,14],[133,GY],[145,14],[157,GY],[169,14],
+      [181,GY],[193,14],[205,GY],[217,14],[229,GY],[241,14],
+      [253,GY],[265,14],[277,GY],[289,14],[301,GY],[308,14],
+      [312,GY],[315,GY],
+    ],
+    coinSpots: [
+      [5,18],[9,18],[18,15],[30,15],[42,14],[54,14],
+      [66,14],[78,14],[90,13],[102,14],[114,13],[126,14],
+      [138,13],[150,14],[162,13],[174,14],[186,13],[198,14],
+      [210,13],[222,14],[234,13],[246,14],[258,13],[270,14],
+      [282,13],[294,14],[306,13],[312,15],
+    ],
+    powerupSpots: [
+      [5,18,'redFlower'],
+      [17,15,'redMushroom'],
+      [29,15,'iceFlower'],
+      [53,14,'hammer'],
+      [77,14,'redMushroom'],
+      [89,13,'redFlower'],
+      [125,14,'iceFlower'],
+      [143,13,'redMushroom'],
+      [161,13,'hammer'],
+      [197,14,'redFlower'],
+      [215,13,'redMushroom'],
+      [233,13,'iceFlower'],
+      [269,14,'hammer'],
+      [287,13,'redMushroom'],
+      [305,13,'redFlower'],
+    ],
+    donkeySpeed: [2.2, 0.9],
+    donkeyJump: -11.5,
+  },
+
+  // ── LEVEL 4 ─────────────────────────────────
+  // All gaps 5 tiles. Faster donkeys.
+  {
+    LW: 370,
+    gaps: [
+      [10,14],[22,26],[34,38],[46,50],[58,62],[70,74],[82,86],[94,98],[106,110],
+      [118,122],[130,134],[142,146],[154,158],[166,170],[178,182],[190,194],
+      [202,206],[214,218],[226,230],[238,242],[250,254],[262,266],[274,278],
+      [286,290],[298,302],[310,314],[322,326],[334,338],[346,350],[358,362],[366,368],
+    ],
+    plats: [
+      [8,15,3],[20,14,3],[32,14,3],[44,13,3],[56,14,3],[68,13,3],[80,14,3],
+      [92,13,3],[104,14,3],[116,13,3],[128,14,3],[140,13,3],[152,14,3],[164,13,3],
+      [176,14,3],[188,13,3],[200,14,3],[212,13,3],[224,14,3],[236,13,3],[248,14,3],
+      [260,13,3],[272,14,3],[284,13,3],[296,14,3],[308,13,3],[320,14,3],[332,13,3],
+      [344,14,3],[356,15,3],[364,16,3],
+    ],
+    donkeySpots: [
+      [5,GY],[16,GY],[27,GY],
+      [36,GY],[50,13],[62,GY],[74,13],[86,GY],[98,13],
+      [110,GY],[122,13],[134,GY],[146,13],[158,GY],[170,13],
+      [182,GY],[194,13],[206,GY],[218,13],[230,GY],[242,13],
+      [254,GY],[266,13],[278,GY],[290,13],[302,GY],[314,13],
+      [326,GY],[338,13],[350,GY],[360,15],[365,GY],[368,GY],
+    ],
+    coinSpots: [
+      [9,14],[21,13],[33,13],[45,12],[57,13],[69,12],[81,13],[93,12],[105,13],
+      [117,12],[129,13],[141,12],[153,13],[165,12],[177,13],[189,12],[201,13],
+      [213,12],[225,13],[237,12],[249,13],[261,12],[273,13],[285,12],[297,13],
+      [309,12],[321,13],[333,12],[345,13],[357,14],[365,15],
+    ],
+    powerupSpots: [
+      [8,15,'redFlower'],[32,13,'iceFlower'],[56,13,'hammer'],
+      [92,12,'redMushroom'],[128,13,'redFlower'],[164,12,'iceFlower'],
+      [200,13,'hammer'],[236,12,'redMushroom'],[272,13,'redFlower'],
+      [308,12,'iceFlower'],[344,13,'hammer'],[356,14,'redFlower'],
+    ],
+    donkeySpeed: [2.8, 1.0],
+    donkeyJump: -12.0,
+  },
+
+  // ── LEVEL 5 ─────────────────────────────────
+  // Hardest. Blue mushroom near end triggers giant DB boss.
+  {
+    LW: 420,
+    gaps: [
+      [10,14],[22,26],[34,38],[46,50],[58,62],[70,74],[82,86],[94,98],[106,110],
+      [118,122],[130,134],[142,146],[154,158],[166,170],[178,182],[190,194],
+      [202,206],[214,218],[226,230],[238,242],[250,254],[262,266],[274,278],
+      [286,290],[298,302],[310,314],[322,326],[334,338],[346,350],[358,362],
+      [370,374],[382,386],[394,398],[406,409],[412,414],[417,418],
+    ],
+    plats: [
+      [8,15,3],[20,14,3],[32,14,3],[44,14,3],[56,14,3],[68,14,3],[80,14,3],
+      [92,14,3],[104,14,3],[116,14,3],[128,14,3],[140,14,3],[152,14,3],[164,14,3],
+      [176,14,3],[188,14,3],[200,14,3],[212,14,3],[224,14,3],[236,14,3],[248,14,3],
+      [260,14,3],[272,14,3],[284,14,3],[296,14,3],[308,14,3],[320,14,3],[332,14,3],
+      [344,14,3],[356,14,3],[368,14,3],[380,14,3],[392,14,3],[404,15,3],[410,16,3],[415,17,3],
+    ],
+    donkeySpots: [
+      [5,GY],[16,GY],[27,GY],
+      [37,GY],[51,14],[63,GY],[75,14],[87,GY],[99,14],
+      [111,GY],[123,14],[135,GY],[147,14],[159,GY],[171,14],
+      [183,GY],[195,14],[207,GY],[219,14],[231,GY],[243,14],
+      [255,GY],[267,14],[279,GY],[291,14],[303,GY],[315,14],
+      [327,GY],[339,14],[351,GY],[363,14],[375,GY],[387,GY],
+    ],
+    coinSpots: [
+      [9,14],[21,13],[33,13],[45,13],[57,13],[69,13],[81,13],[93,13],[105,13],
+      [117,13],[129,13],[141,13],[153,13],[165,13],[177,13],[189,13],[201,13],
+      [213,13],[225,13],[237,13],[249,13],[261,13],[273,13],[285,13],[297,13],
+      [309,13],[321,13],[333,13],[345,13],[357,13],[369,13],[381,13],[393,13],
+      [405,14],[411,15],
+    ],
+    powerupSpots: [
+      [8,15,'redFlower'],[32,13,'iceFlower'],[56,13,'hammer'],
+      [92,13,'redMushroom'],[128,13,'redFlower'],[164,13,'iceFlower'],
+      [200,13,'hammer'],[236,13,'redMushroom'],[272,13,'redFlower'],
+      [308,13,'iceFlower'],[344,13,'hammer'],[380,13,'redFlower'],
+      [390,13,'blueMushroom'],
+    ],
+    donkeySpeed: [2.9, 0],
+    donkeyJump: -11.9,
+  },
+];
+
+// ── Tile map ───────────────────────────────────
+let LW = LEVELS[0].LW;
+let tiles = new Uint8Array(LW * LH);
+
 const setTile = (x, y, v) => { if (x>=0&&x<LW&&y>=0&&y<LH) tiles[y*LW+x]=v; };
 const getTile = (x, y)    => { if (x<0||x>=LW||y<0||y>=LH) return 1; return tiles[y*LW+x]; };
 
-// ── Level builder ──────────────────────────────
-function buildLevel() {
+function buildLevel(lvlIdx) {
+  const lvl = LEVELS[lvlIdx];
+  LW = lvl.LW;
+  tiles = new Uint8Array(LW * LH);
   for (let x = 0; x < LW; x++)
     for (let y = GROUND_Y; y < LH; y++) setTile(x, y, 1);
-
-  const gaps = [
-    [13,16],[24,26],[33,37],[44,47],[54,58],
-    [66,70],[78,82],[89,93],[100,104],[110,113],[119,123],
-    [130,134],[139,142],[147,151],[156,159],[165,169],[174,177],
-    [182,186],[190,193],[199,203],[207,210],[214,217],[221,224],[227,228],
-  ];
-  for (const [s, e] of gaps)
+  for (const [s, e] of lvl.gaps)
     for (let x = s; x <= e; x++)
       for (let y = GROUND_Y; y < LH; y++) setTile(x, y, 0);
-
-  const plats = [
-    [5,17,5],[17,16,4],[34,16,3],[45,15,3],[55,16,4],
-    [67,15,4],[79,14,4],[90,15,4],[101,15,3],[111,13,3],[120,15,3],
-    [131,15,3],[140,13,3],[148,15,3],[157,13,3],[166,14,3],[175,13,3],
-    [183,15,3],[191,13,3],[200,14,3],[208,13,3],[215,15,3],[222,13,3],[225,16,4],
-  ];
-  for (const [x, y, w] of plats)
+  for (const [x, y, w] of lvl.plats)
     for (let i = 0; i < w; i++) setTile(x + i, y, 2);
 }
-buildLevel();
 
 // ── Entity factories ───────────────────────────
+const PLAYER_W_SM = 12, PLAYER_H_SM = 16;
+const PLAYER_W_BG = 18, PLAYER_H_BG = 24;
+
 function mkPlayer() {
   return {
-    x: 2*TILE, y: (GROUND_Y-1)*TILE - 16,
-    w: 12, h: 16,
+    x: 2*TILE, y: (GROUND_Y-1)*TILE - PLAYER_H_SM,
+    w: PLAYER_W_SM, h: PLAYER_H_SM,
     vx: 0, vy: 0,
-    onGround: false,
-    facing: 1,
-    anim: 0,
-    invincible: 0,
-    alive: true,
-    squash: 0,
-    stretch: 0,
+    onGround: false, facing: 1,
+    anim: 0, invincible: 0, alive: true,
+    squash: 0, stretch: 0,
+    big: false,
+    power: null,          // null | 'fire' | 'ice'
+    fireballCooldown: 0,
+    hammerTimer: 0, hammerSwingTimer: 0,
   };
 }
 
-function mkDonkey(tx, groundTy) {
+function growPlayer() {
+  if (player.big) return;
+  player.big = true;
+  player.y -= (PLAYER_H_BG - PLAYER_H_SM);
+  player.w = PLAYER_W_BG; player.h = PLAYER_H_BG;
+  sfxGrow();
+  spawnFloatingText(player.x + player.w/2, player.y - 4, 'BIG!', '#ff4444');
+}
+
+function shrinkPlayer() {
+  if (!player.big) return;
+  player.big = false;
+  player.y += (PLAYER_H_BG - PLAYER_H_SM);
+  player.w = PLAYER_W_SM; player.h = PLAYER_H_SM;
+  player.power = null;
+  player.invincible = 180;
+  sfxShrink();
+}
+
+function mkDonkey(tx, groundTy, lvlIdx) {
+  const lvl = LEVELS[lvlIdx];
   const h = 28;
   return {
     x: tx * TILE, y: groundTy * TILE - h,
-    w: 24, h,
-    vx: 0, vy: 0,
-    onGround: false,
-    alive: true, dying: 0, active: false,
-    anim: 0,
-    jumpCooldown: 60 + Math.random() * 60,
+    w: 24, h, vx: 0, vy: 0,
+    onGround: false, alive: true, dying: 0, active: false,
+    anim: 0, frozen: 0,
+    jumpCooldown: 40 + Math.random() * 60,
     facing: -1,
-    speed: 1.2 + Math.random() * 0.6,
+    speed: lvl.donkeySpeed[0] + Math.random() * lvl.donkeySpeed[1],
+    jumpVy: lvl.donkeyJump,
   };
 }
 
-function mkCoin(tx, ty) {
-  return { x: tx*TILE+4, y: ty*TILE, w: 8, h: 8, got: false, anim: 0 };
-}
+function mkCoin(tx, ty)         { return { x: tx*TILE+4, y: ty*TILE, w: 8, h: 8, got: false, anim: 0 }; }
+function mkPowerup(tx, ty, kind){ return { x: tx*TILE+2, y: ty*TILE, w: 12, h: 14, kind, got: false, anim: 0 }; }
 
 // ── Particles & floating text ──────────────────
 let particles = [], floatingTexts = [];
 let shakeFrames = 0, shakeMag = 0;
+let levelTimer = 360 * 60; // 360 seconds in frames
+let deathCause = 'abyss';  // 'abyss' | 'enemy' | 'time'
 
+const MAX_PARTICLES = 80;
+const MAX_FLOATS    = 8;
 function spawnParticles(x, y, n, col) {
-  for (let i = 0; i < n; i++)
-    particles.push({ x, y, vx: (Math.random()-0.5)*4, vy: (Math.random()-0.5)*4-1, life: 15, maxLife: 15, col });
+  const room = MAX_PARTICLES - particles.length;
+  if (room <= 0) return;
+  const count = Math.min(n, room);
+  for (let i = 0; i < count; i++)
+    particles.push({ x, y, vx:(Math.random()-0.5)*4, vy:(Math.random()-0.5)*4-1, life:15, col });
 }
 function spawnFloatingText(x, y, text, col) {
-  floatingTexts.push({ x, y, text, col, life: 30, maxLife: 30 });
+  if (floatingTexts.length >= MAX_FLOATS) floatingTexts.shift();
+  floatingTexts.push({ x, y, text, col, life:30 });
 }
 function updateParticles() {
-  for (let i = particles.length - 1; i >= 0; i--) {
+  for (let i = particles.length-1; i >= 0; i--) {
     const p = particles[i];
-    p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life--;
-    if (p.life <= 0) particles.splice(i, 1);
+    p.x += p.vx; p.y += p.vy; p.vy += 0.2;
+    if (--p.life <= 0) particles.splice(i, 1);
   }
 }
 function updateFloatingTexts() {
-  for (let i = floatingTexts.length - 1; i >= 0; i--) {
-    floatingTexts[i].y -= 0.6;
-    floatingTexts[i].life--;
+  for (let i = floatingTexts.length-1; i >= 0; i--) {
+    floatingTexts[i].y -= 0.6; floatingTexts[i].life--;
     if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
   }
 }
 
 // ── Game state ─────────────────────────────────
-let player, donkeys, coins;
+let player, donkeys, coins, powerups, fireballs;
+let dbBoss = null, barrels = [];
 let camera = { x: 0 };
 let score = 0;
 let state = 'menu';
 let frameN = 0;
-let deathDonkeys = [];
-let deathScreenX = 0;
+let tutorialPage = 0;
+let tutorialReturn = 'menu'; // where to go after tutorial ('menu','playing','dead')
+let mainMenuItem = 0;   // 0=Play, 1=Tutorial
+let pauseSelection = 0; // 0=Resume 1=Restart 2=Tutorial 3=Menu
+const TUTORIAL_SEEN_KEY = 'dbong_tutorial_seen';
+let currentLevel = 0;
+let unlockedLevels = 1;
+let menuSelection = 0;
 
-function resetGame() {
-  player  = mkPlayer();
-  score   = 0;
+function resetGame(lvlIdx) {
+  currentLevel = lvlIdx;
+  buildLevel(lvlIdx);
+  player   = mkPlayer();
+  player.invincible = 300; // 5-second spawn invincibility
+  score    = 0;
   camera.x = 0;
-  frameN  = 0;
-  deathDonkeys = [];
-  particles = []; floatingTexts = [];
+  frameN   = 0;
+  particles = []; floatingTexts = []; fireballs = [];
+  dbBoss = null; barrels = [];
   shakeFrames = 0; shakeMag = 0;
+  levelTimer = 360 * 60; deathCause = 'abyss';
 
-  donkeys = [
-    mkDonkey(8,GROUND_Y),mkDonkey(20,GROUND_Y),
-    mkDonkey(30,GROUND_Y),mkDonkey(38,16),mkDonkey(46,15),mkDonkey(56,16),
-    mkDonkey(62,GROUND_Y),mkDonkey(68,15),mkDonkey(74,GROUND_Y),mkDonkey(80,14),mkDonkey(91,15),
-    mkDonkey(96,GROUND_Y),mkDonkey(102,15),mkDonkey(108,GROUND_Y),mkDonkey(112,13),mkDonkey(121,15),
-    mkDonkey(127,GROUND_Y),mkDonkey(132,15),mkDonkey(137,GROUND_Y),mkDonkey(141,13),
-    mkDonkey(149,15),mkDonkey(154,GROUND_Y),mkDonkey(158,13),
-    mkDonkey(162,GROUND_Y),mkDonkey(167,14),mkDonkey(171,GROUND_Y),mkDonkey(176,13),
-    mkDonkey(179,GROUND_Y),mkDonkey(184,15),mkDonkey(192,13),
-    mkDonkey(196,GROUND_Y),mkDonkey(201,14),mkDonkey(205,GROUND_Y),mkDonkey(209,13),
-    mkDonkey(213,GROUND_Y),mkDonkey(216,15),mkDonkey(219,GROUND_Y),mkDonkey(223,13),
-    mkDonkey(226,16),mkDonkey(228,GROUND_Y),
-  ];
-
-  coins = [];
-  const coinSpots = [
-    [6,16],[7,16],[8,16],[18,15],[19,15],
-    [35,15],[36,15],[46,14],[47,14],[56,15],[57,15],
-    [68,14],[69,14],[80,13],[81,13],[91,14],[92,14],
-    [102,14],[112,12],[113,12],[121,14],[122,14],
-    [132,14],[133,14],[141,12],[142,12],[149,14],[158,12],
-    [167,13],[168,13],[176,12],[177,12],[184,14],[192,12],
-    [201,13],[202,13],[209,12],[210,12],[216,14],[222,12],
-    [226,15],[227,15],
-  ];
-  for (const [tx, ty] of coinSpots) coins.push(mkCoin(tx, ty));
+  const lvl = LEVELS[lvlIdx];
+  donkeys  = lvl.donkeySpots.map(([tx,ty])    => mkDonkey(tx, ty, lvlIdx));
+  coins    = lvl.coinSpots.map(([tx,ty])       => mkCoin(tx, ty));
+  powerups = lvl.powerupSpots.map(([tx,ty,k]) => mkPowerup(tx, ty, k));
 
   state = 'playing';
   bgmPlay();
 }
 
+// ── Fireball ───────────────────────────────────
+function shootFireball() {
+  if (!player.power) return;
+  const kind = player.power;
+  const vx = player.facing * 7;
+  fireballs.push({
+    x: player.x + (player.facing > 0 ? player.w : -8),
+    y: player.y + player.h/2 - 4,
+    vx, kind, w: 8, h: 8, life: 180,
+  });
+  player.fireballCooldown = 18;
+  if (kind === 'fire') sfxFireball(); else sfxIceball();
+}
+
+// ── Hammer swing ───────────────────────────────
+function doHammerSwing() {
+  sfxHammerSwing();
+  shakeFrames = 5; shakeMag = 3;
+  spawnFloatingText(player.x + player.w/2, player.y - 8, 'WHAM!', '#ffaa00');
+  // Contact kill handled in main donkey collision loop (player.hammerTimer > 0)
+}
+
+// ── DB Boss ────────────────────────────────────
+function spawnDBBoss(spawnX) {
+  const bx = Math.min(spawnX, (LW - 8) * TILE);
+  dbBoss = {
+    x: bx, y: (GROUND_Y - 1) * TILE - 56,
+    w: 48, h: 56,
+    vx: 0, vy: 0,
+    onGround: false, alive: true, dying: 0,
+    hp: 15, maxHp: 15,
+    stomps: 0,
+    barrelTimer: 120,
+    minionTimer: 180, // first minion spawns after 3 seconds
+    facing: -1, anim: 0,
+    shield: 0,        // frames of forcefield remaining
+    rage: 0,          // 0-9, increases with each hit
+    growlTimer: 180,  // periodic growl
+  };
+  const r = Math.random();
+  dbBoss.hp = dbBoss.maxHp = r < 0.0001 ? 50 : r < 0.001 ? 25 : r < 0.01 ? 20 : 15;
+  sfxBossRoar();
+}
+
+function mkBarrel(x, y, vx) {
+  return { x, y, w: 12, h: 12, vx, vy: 0, onGround: false, life: 600 };
+}
+
+function sfxBossStomped() {
+  if (!audioCtx) return;
+  [400, 300, 200].forEach((f, i) => {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(masterGain); o.type = 'square'; o.frequency.value = f;
+    const t = audioCtx.currentTime + i * 0.07;
+    g.gain.setValueAtTime(0.4, t); g.gain.linearRampToValueAtTime(0, t + 0.06);
+    o.start(t); o.stop(t + 0.07);
+  });
+}
+function sfxBossRoar() {
+  if (!audioCtx) return;
+  [90, 70, 50, 35].forEach((f, i) => {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(masterGain); o.type = 'sawtooth'; o.frequency.value = f;
+    const t = audioCtx.currentTime + i * 0.13;
+    g.gain.setValueAtTime(0.55, t); g.gain.linearRampToValueAtTime(0, t + 0.12);
+    o.start(t); o.stop(t + 0.13);
+  });
+}
+function sfxShieldActivate() {
+  if (!audioCtx) return;
+  sfx(900, 0.04, 'square', 1800, 0.35);
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.connect(g); g.connect(masterGain); o.type = 'square';
+  const t = audioCtx.currentTime + 0.05;
+  o.frequency.setValueAtTime(1800, t); o.frequency.linearRampToValueAtTime(300, t + 0.22);
+  g.gain.setValueAtTime(0.3, t); g.gain.linearRampToValueAtTime(0, t + 0.22);
+  o.start(t); o.stop(t + 0.23);
+}
+function sfxShieldBlock() {
+  sfx(1400, 0.06, 'square', 200, 0.5);
+  sfx(800,  0.1,  'square', 100, 0.3);
+}
+function sfxBossGrowl() {
+  sfx(65, 0.18, 'sawtooth', 45, 0.28);
+}
+function sfxBossRage() {
+  if (!audioCtx) return;
+  [120, 90, 60].forEach((f, i) => {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(masterGain); o.type = 'sawtooth'; o.frequency.value = f;
+    const t = audioCtx.currentTime + i * 0.08;
+    g.gain.setValueAtTime(0.6, t); g.gain.linearRampToValueAtTime(0, t + 0.07);
+    o.start(t); o.stop(t + 0.08);
+  });
+}
+
+function spawnMinion() {
+  // Spawn a donkey from the boss position heading toward the player
+  const lvl = LEVELS[currentLevel];
+  const m = {
+    x: dbBoss.x - 28, y: dbBoss.y + dbBoss.h - 28,
+    w: 24, h: 28,
+    vx: 0, vy: 0,
+    onGround: false, alive: true, dying: 0, active: true,
+    anim: 0, frozen: 0,
+    jumpCooldown: 20,
+    facing: -1,
+    speed: 1.8 + dbBoss.rage * 0.2,
+    jumpVy: -10.5,
+  };
+  donkeys.push(m);
+  sfxDonkeyGrunt();
+  spawnParticles(m.x + m.w/2, m.y, 8, '#cc7700');
+}
+
+function updateDBBoss() {
+  if (!dbBoss) return;
+  if (!dbBoss.alive) { if (dbBoss.dying > 0) dbBoss.dying--; return; }
+
+  // Tick timers
+  if (dbBoss.shield > 0) dbBoss.shield--;
+  if (dbBoss.growlTimer > 0) dbBoss.growlTimer--;
+  if (dbBoss.growlTimer <= 0) {
+    sfxBossGrowl();
+    dbBoss.growlTimer = 180 - dbBoss.rage * 12;
+  }
+
+  // Continuous rumble while boss is alive
+  const rumbleMag = 1 + Math.min(dbBoss.rage, 6) * 0.4;
+  if (frameN % 3 === 0) { shakeFrames = 4; shakeMag = rumbleMag; }
+
+  // Boss stays put — only gravity, no horizontal movement
+  dbBoss.vx = 0;
+  dbBoss.facing = (player.x + player.w/2) < (dbBoss.x + dbBoss.w/2) ? -1 : 1;
+  dbBoss.anim = (dbBoss.anim + 0.08 + dbBoss.rage * 0.012) % 4;
+  moveEntity(dbBoss);
+
+  // AI: throw barrels toward player — rate scales with rage
+  dbBoss.barrelTimer--;
+  const barrelRate = Math.max(55, 150 - dbBoss.rage * 11);
+  if (dbBoss.barrelTimer <= 0) {
+    dbBoss.barrelTimer = barrelRate;
+    const bvx = (player.x < dbBoss.x ? -1 : 1) * (3.5 + dbBoss.rage * 0.3);
+    barrels.push(mkBarrel(dbBoss.x + (bvx < 0 ? -12 : dbBoss.w), dbBoss.y + 10, bvx));
+    if (dbBoss.rage >= 5) {
+      barrels.push(mkBarrel(dbBoss.x + dbBoss.w/2 - 6, dbBoss.y + 4, bvx * 0.75));
+    }
+    sfxHammerSwing();
+    spawnFloatingText(dbBoss.x + dbBoss.w/2, dbBoss.y - 12, 'BARREL!', '#ff8800');
+  }
+
+  // AI: spawn minion donkeys — faster with rage
+  dbBoss.minionTimer--;
+  const minionRate = Math.max(120, 300 - dbBoss.rage * 20);
+  if (dbBoss.minionTimer <= 0) {
+    dbBoss.minionTimer = minionRate;
+    spawnMinion();
+    if (dbBoss.rage >= 7) spawnMinion(); // double spawn at high rage
+    spawnFloatingText(dbBoss.x + dbBoss.w/2, dbBoss.y - 24, 'GET HIM!', '#ff6600');
+  }
+
+  // Check stomp by player — boss can be stomped regardless of position
+  const stompVy = player.vy;
+  const stompBottom = player.y + player.h - stompVy;
+  if (hit(player, dbBoss)) {
+    if (stompVy > 1 && stompBottom <= dbBoss.y + 10) {
+      if (dbBoss.shield > 0) {
+        // Shield active — knock player back, no damage
+        const pushDir = player.x < dbBoss.x ? -1 : 1;
+        player.vx = pushDir * -7;
+        player.vy = -8;
+        sfxShieldBlock();
+        shakeFrames = 5; shakeMag = 3;
+        spawnParticles(dbBoss.x + dbBoss.w/2, dbBoss.y, 10, '#00aaff');
+        spawnFloatingText(dbBoss.x + dbBoss.w/2, dbBoss.y - 8, 'BLOCKED!', '#00ccff');
+      } else {
+        // Stomp lands — damage, rage up, shield activates
+        dbBoss.stomps++;
+        dbBoss.hp--;
+        dbBoss.rage = Math.min(9, dbBoss.rage + 1);
+        dbBoss.shield = 300;
+        player.vy = -9;
+        sfxBossStomped();
+        sfxBossRage();
+        shakeFrames = 8; shakeMag = 4;
+        spawnParticles(dbBoss.x + dbBoss.w/2, dbBoss.y, 14, '#ff6600');
+        sfxShieldActivate();
+        if (dbBoss.hp <= 0) {
+          dbBoss.alive = false; dbBoss.dying = 60;
+          sfxWin(); sfxBossRoar();
+          spawnParticles(dbBoss.x + dbBoss.w/2, dbBoss.y + dbBoss.h/2, 40, '#ff6600');
+          spawnFloatingText(dbBoss.x + dbBoss.w/2, dbBoss.y - 20, 'DB DEFEATED!', '#ffff00');
+          score += 5000;
+        } else {
+          spawnFloatingText(dbBoss.x + dbBoss.w/2, dbBoss.y - 8, `${dbBoss.hp} LEFT! RAGE!`, '#ff4400');
+        }
+      }
+    }
+    // No body contact damage — boss is stationary, minions do the killing
+  }
+}
+
+function updateBarrels() {
+  for (let i = barrels.length - 1; i >= 0; i--) {
+    const b = barrels[i];
+
+    // Straight horizontal movement — no gravity, no bouncing
+    b.x += b.vx;
+    b.life--;
+    if (b.life <= 0) { barrels.splice(i, 1); continue; }
+    // Hit player
+    if (player.invincible <= 0 && hit(player, b)) {
+      barrels.splice(i, 1);
+      if (player.power !== null) {
+        player.power = null; player.invincible = 180; sfxShrink();
+        spawnFloatingText(player.x+player.w/2, player.y-8, 'POWER LOST!', '#ff8800');
+        player.vx = (player.x < b.x ? -1 : 1) * 4; player.vy = -3;
+      } else if (player.big) {
+        shrinkPlayer();
+        player.vx = (player.x < b.x ? -1 : 1) * 4; player.vy = -3;
+      } else {
+        const pushDir = player.x < b.x ? -1 : 1;
+        deathCause = 'enemy'; killPlayer(pushDir * 5, -9);
+      }
+      continue;
+    }
+  }
+}
+
+function drawDBBoss() {
+  if (!dbBoss) return;
+  if (!dbBoss.alive && dbBoss.dying <= 0) return;
+  const sx = Math.round(dbBoss.x - camera.x), sy = Math.round(dbBoss.y);
+  if (sx < -80 || sx > W + 80) return;
+  if (!dbBoss.alive && dbBoss.dying > 0) {
+    ctx.save(); ctx.translate(sx + dbBoss.w/2, sy + dbBoss.h);
+    const t = 1 - dbBoss.dying/60;
+    ctx.scale(1 + t*2, Math.max(0.01, 1 - t*1.5));
+    ctx.fillStyle = '#aa5500'; ctx.fillRect(-dbBoss.w/2, -dbBoss.h, dbBoss.w, dbBoss.h);
+    ctx.restore(); return;
+  }
+
+  const fr = Math.floor(dbBoss.anim) % 2;
+  ctx.save();
+  if (dbBoss.facing === -1) { ctx.translate(sx + dbBoss.w, sy); ctx.scale(-1, 1); }
+  else ctx.translate(sx, sy);
+
+  // Giant donkey body (scale ~2x normal donkey)
+  // Ears
+  px(5,-18,10,18,'#aa5500'); px(28,-18,10,18,'#aa5500');
+  px(7,-14,6,12,'#ffaa55'); px(30,-14,6,12,'#ffaa55');
+  // Body
+  px(2,-4,44,26,'#cc7700');
+  px(0,8,18,18,'#ffaa55'); // face
+  px(2,14,6,4,'#000'); px(10,14,6,4,'#000'); // nostrils
+  px(4,24,4,4,'#fff'); px(10,24,4,4,'#fff'); // teeth
+  // Eyes
+  px(28,0,12,8,'#fff'); px(30,2,8,6,'#000');
+  // Nose bridge
+  px(36,-4,12,6,'#000');
+  // Torso legs
+  px(-4,22,56,28,'#aa5500');
+  px(0,24,48,20,'#cc7700');
+  px(8,30,28,16,'#ffaa00');
+  const la = fr === 0 ? 4 : -4;
+  px(4,50+la,16,14,'#663300'); px(28,50-la,16,14,'#663300');
+  px(2,64+la,18,6,'#000');    px(26,64-la,18,6,'#000');
+  // Tail
+  px(48,28,10,6,'#aa5500'); px(54,34,8,8,'#aa5500');
+
+  // "DB" bandana — color shifts red→orange with rage
+  const bandanaR = Math.min(255, 200 + dbBoss.rage * 6);
+  const bandanaG = Math.max(0,   30  - dbBoss.rage * 3);
+  px(2, 2, 42, 10, `rgb(${bandanaR},${bandanaG},0)`);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 9px monospace';
+  ctx.fillText('DB', 14, 10);
+
+  // Shield spike icon when active (drawn in boss-local coords)
+  if (dbBoss.shield > 0) {
+    const pulse = 0.6 + 0.4 * Math.sin(frameN * 0.25);
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = '#00ccff';
+    // Spike on top of head
+    ctx.beginPath(); ctx.moveTo(24, -22); ctx.lineTo(18, -32); ctx.lineTo(30, -32); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // HP bar
+  ctx.restore();
+
+  // Shield forcefield (drawn in screen coords)
+  if (dbBoss.shield > 0) {
+    const pulse = 0.35 + 0.25 * Math.sin(frameN * 0.3);
+    const shieldAlpha = Math.min(1, dbBoss.shield / 60) * pulse + 0.15;
+    ctx.save();
+    ctx.globalAlpha = shieldAlpha;
+    const scx = sx + dbBoss.w/2, scy = sy + dbBoss.h/2;
+    const sw = dbBoss.w/2 + 10, sh = dbBoss.h/2 + 8;
+    ctx.fillStyle = '#003355';
+    ctx.fillRect(scx - sw, scy - sh, sw*2, sh*2);
+    ctx.strokeStyle = '#00eeff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(scx - sw, scy - sh, sw*2, sh*2);
+    ctx.restore();
+
+    // Shield countdown text
+    const shieldSecs = Math.ceil(dbBoss.shield / 60);
+    ctx.fillStyle = '#00eeff'; ctx.font = 'bold 8px monospace';
+    ctx.fillText(`SHIELD ${shieldSecs}s`, sx + dbBoss.w/2 - 20, sy - 20);
+  }
+
+  // HP bar — color shifts green→yellow→red with damage
+  const hpPct = dbBoss.hp / dbBoss.maxHp;
+  const hpCol = hpPct > 0.6 ? '#00cc00' : hpPct > 0.3 ? '#ffcc00' : '#ff2200';
+  ctx.fillStyle = '#000'; ctx.fillRect(sx, sy - 14, dbBoss.w, 8);
+  ctx.fillStyle = hpCol; ctx.fillRect(sx, sy - 14, dbBoss.w * hpPct, 8);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.strokeRect(sx, sy - 14, dbBoss.w, 8);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 7px monospace';
+  ctx.fillText(`${dbBoss.hp}/${dbBoss.maxHp}`, sx + dbBoss.w/2 - 12, sy - 7);
+
+  // Rage flames at high rage
+  if (dbBoss.rage >= 4) {
+    const flicker = (frameN >> 2) & 1; // cheap 0/1 flicker at 15fps
+    for (let i = 0; i < dbBoss.rage - 3; i++) {
+      const fx = sx + 6 + i * 10 + (flicker ? 2 : 0);
+      const fy = sy - 20 - (flicker ? 3 : 0);
+      ctx.fillStyle = '#ff6600'; ctx.fillRect(fx, fy, 4, 8);
+      ctx.fillStyle = '#ffdd00'; ctx.fillRect(fx+1, fy+2, 2, 4);
+    }
+  }
+}
+
+function drawBarrels() {
+  for (const b of barrels) {
+    const sx = Math.round(b.x - camera.x);
+    if (sx < -20 || sx > W + 20) continue;
+    const sy = Math.round(b.y);
+    const rot = (b.x / 30) % (Math.PI * 2);
+    ctx.save();
+    ctx.translate(sx + b.w/2, sy + b.h/2);
+    ctx.rotate(rot * (b.vx > 0 ? 1 : -1));
+    ctx.fillStyle = '#8B4513'; ctx.fillRect(-6, -6, 12, 12);
+    ctx.fillStyle = '#663300'; ctx.fillRect(-6, -2, 12, 4);
+    ctx.fillStyle = '#aaa';    ctx.fillRect(-7, -7, 14, 2);
+    ctx.fillStyle = '#aaa';    ctx.fillRect(-7,  5, 14, 2);
+    ctx.restore();
+  }
+}
+
 // ── Physics ────────────────────────────────────
 function moveEntity(e) {
   e.vy = Math.min(e.vy + GRAV, 20);
-
   e.x += e.vx;
-  const cx = e.vx >= 0 ? e.x + e.w - 1 : e.x;
+  const cx = e.vx >= 0 ? e.x+e.w-1 : e.x;
   for (let ty = Math.floor(e.y/TILE); ty <= Math.floor((e.y+e.h-1)/TILE); ty++) {
     if (getTile(Math.floor(cx/TILE), ty) > 0) {
-      e.x = e.vx >= 0 ? Math.floor(cx/TILE)*TILE - e.w : (Math.floor(cx/TILE)+1)*TILE;
+      e.x = e.vx >= 0 ? Math.floor(cx/TILE)*TILE-e.w : (Math.floor(cx/TILE)+1)*TILE;
       e.vx = 0; break;
     }
   }
-
-  e.y += e.vy;
-  e.onGround = false;
-  const cy = e.vy >= 0 ? e.y + e.h : e.y;
+  e.y += e.vy; e.onGround = false;
+  const cy = e.vy >= 0 ? e.y+e.h : e.y;
   for (let tx = Math.floor(e.x/TILE); tx <= Math.floor((e.x+e.w-1)/TILE); tx++) {
     if (getTile(tx, Math.floor(cy/TILE)) > 0) {
-      if (e.vy >= 0) { e.y = Math.floor(cy/TILE)*TILE - e.h; e.onGround = true; }
+      if (e.vy >= 0) { e.y = Math.floor(cy/TILE)*TILE-e.h; e.onGround = true; }
       else            { e.y = (Math.floor(cy/TILE)+1)*TILE; }
       e.vy = 0; break;
     }
@@ -304,115 +941,214 @@ function hit(a, b) {
   return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
 }
 
+// ── Kill animation ─────────────────────────────
+function killPlayer(kickVx, kickVy) {
+  sfxDeath(); bgmStop(); shakeFrames = 14; shakeMag = 4;
+  player.vx = kickVx !== undefined ? kickVx : player.vx;
+  player.vy = kickVy !== undefined ? kickVy : player.vy;
+  player.onGround = false;
+  player.alive = true; // keep drawing
+  player.dyingAngle = 0;
+  state = 'dying';
+}
+
 // ── Update ─────────────────────────────────────
 function update() {
+  if (state === 'dying') {
+    player.vy += GRAV;
+    player.x  += player.vx;
+    player.y  += player.vy;
+    player.dyingAngle = (player.dyingAngle || 0) + 0.18;
+    updateParticles(); updateFloatingTexts();
+    if (shakeFrames > 0) { shakeFrames--; }
+    // Once player has fallen well past the bottom of the screen, show dead overlay
+    if (player.y > H + 80) { state = 'dead'; }
+    return;
+  }
   if (state !== 'playing') return;
   frameN++;
   updateParticles();
   updateFloatingTexts();
+  tickGlitches();
 
-  // Player
+  if (player.fireballCooldown > 0) player.fireballCooldown--;
+
+  // Player movement
   const spd = 3.0;
   if (keys['ArrowLeft']  || keys['KeyA']) { player.vx = -spd; player.facing = -1; }
-  else if (keys['ArrowRight'] || keys['KeyD']) { player.vx =  spd; player.facing =  1; }
+  else if (keys['ArrowRight'] || keys['KeyD']) { player.vx = spd; player.facing = 1; }
   else { player.vx *= 0.72; if (Math.abs(player.vx) < 0.1) player.vx = 0; }
 
   if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && player.onGround) {
-    player.vy = -10.5;
-    player.onGround = false;
-    player.stretch = 4;
-    sfxJump();
+    player.vy = -12.75; player.onGround = false; player.stretch = 4; sfxJump();
   }
 
   const wasOnGround = player.onGround;
   moveEntity(player);
   if (!wasOnGround && player.onGround) {
-    player.squash = 6;
-    sfxLand();
-    spawnParticles(player.x + player.w/2, player.y + player.h, 4, '#ffffff');
+    player.squash = 6; sfxLand();
+    spawnParticles(player.x+player.w/2, player.y+player.h, 4, '#ffffff');
   }
   if (player.squash > 0) player.squash--;
   if (player.stretch > 0) player.stretch--;
-
   if (player.x < 0) player.x = 0;
   if (player.invincible > 0) player.invincible--;
   player.anim = (player.anim + (Math.abs(player.vx) > 0.3 ? 0.2 : 0)) % 4;
 
-  // Fall = instant death
-  if (player.y > LH * TILE + 20) {
-    deathScreenX = player.x - camera.x;
-    spawnDeathDonkeys(deathScreenX);
-    sfxDeath(); bgmStop();
-    shakeFrames = 12; shakeMag = 3;
-    state = 'dead';
-    return;
+  // Fall — trigger when feet cross the bottom of the canvas
+  if (player.y + player.h > H) {
+    deathCause = 'abyss';
+    sfxDeath(); bgmStop(); shakeFrames = 12; shakeMag = 3;
+    state = 'dead'; return;
+  }
+
+  // Level timer
+  if (levelTimer > 0) {
+    levelTimer--;
+  } else {
+    deathCause = 'time';
+    sfxDeath(); bgmStop(); shakeFrames = 12; shakeMag = 3;
+    state = 'dead'; return;
   }
 
   // Win
   if (player.x > (LW - 3) * TILE) {
-    sfxWin(); bgmStop();
-    state = 'win';
-    return;
+    if (currentLevel === 4 && (!dbBoss || dbBoss.alive)) {
+      // Level 5: must collect blue mushroom and defeat DB boss first
+      const msg = !dbBoss ? 'FIND THE BLUE MUSHROOM!' : 'DEFEAT DB BOSS!';
+      spawnFloatingText(player.x + player.w/2, player.y - 16, msg, '#ff0000');
+    } else {
+      sfxWin(); bgmStop();
+      if (currentLevel + 1 > unlockedLevels - 1 && currentLevel + 1 < LEVELS.length)
+        unlockedLevels = currentLevel + 2;
+      state = 'win'; return;
+    }
   }
 
-  // Capture stomp velocity BEFORE the loop so multi-enemy stomps all register
   const stompVy     = player.vy;
   const stompBottom = player.y + player.h - stompVy;
 
   // Donkeys
   for (const d of donkeys) {
     if (!d.alive) { if (d.dying > 0) d.dying--; continue; }
-
     if (!d.active && Math.abs(d.x - player.x) < 550) d.active = true;
     if (!d.active) continue;
 
+    if (d.frozen > 0) {
+      d.frozen--;
+      d.vx = 0;
+      moveEntity(d);
+      if (d.y > LH*TILE+40) { d.alive = false; continue; }
+      // Frozen: any contact kills
+      if (hit(player, d)) {
+        d.alive = false; d.dying = 25; player.vy = -6; score += 300;
+        spawnGlitchGhost(d);
+        sfxDonkeyDeath();
+        spawnParticles(d.x+d.w/2, d.y+d.h/2, 10, '#44ccff');
+        spawnFloatingText(d.x+d.w/2, d.y, '+300 ICE!', '#44ccff');
+        shakeFrames = 3; shakeMag = 2;
+      }
+      continue;
+    }
+
     const dx = player.x - (d.x + d.w/2 - player.w/2);
     const dy = player.y - d.y;
-
     d.facing = dx > 0 ? 1 : -1;
     d.vx = d.facing * d.speed;
-
     d.jumpCooldown--;
     if (d.onGround && d.jumpCooldown <= 0) {
       let shouldJump = false;
       if (dy < -32 && Math.abs(dx) < 240) shouldJump = true;
       if (!shouldJump) {
-        const probeX = d.x + (d.facing > 0 ? d.w + 2 : -4);
-        const probeTx = Math.floor(probeX / TILE);
-        const probeTy = Math.floor((d.y + d.h + 8) / TILE);
-        if (getTile(probeTx, probeTy) === 0 && getTile(probeTx, probeTy+1) === 0) shouldJump = true;
+        const probeX = d.x + (d.facing > 0 ? d.w+2 : -4);
+        const pTx = Math.floor(probeX/TILE), pTy = Math.floor((d.y+d.h+8)/TILE);
+        if (getTile(pTx, pTy)===0 && getTile(pTx, pTy+1)===0) shouldJump = true;
       }
       if (!shouldJump) {
-        const wallX = d.x + (d.facing > 0 ? d.w + 1 : -2);
-        const wallTy = Math.floor((d.y + d.h/2) / TILE);
-        if (getTile(Math.floor(wallX/TILE), wallTy) > 0) shouldJump = true;
+        const wallX = d.x + (d.facing > 0 ? d.w+1 : -2);
+        if (getTile(Math.floor(wallX/TILE), Math.floor((d.y+d.h/2)/TILE)) > 0) shouldJump = true;
       }
-      if (shouldJump) {
-        d.vy = -10.5;
-        d.jumpCooldown = 55 + Math.random() * 45;
-        sfxDonkeyGrunt();
-      }
+      if (shouldJump) { d.vy = d.jumpVy; d.jumpCooldown = 40 + Math.random()*40; sfxDonkeyGrunt(); }
     }
-
     moveEntity(d);
-    if (d.y > LH*TILE + 40) { d.alive = false; continue; }
+    if (d.y > LH*TILE+40) { d.alive = false; continue; }
     d.anim = (d.anim + 0.18) % 4;
 
-    if (player.invincible <= 0 && hit(player, d)) {
+    if (hit(player, d)) {
       if (stompVy > 1 && stompBottom <= d.y + 8) {
-        d.alive = false; d.dying = 25;
-        player.vy = -9;
-        score += 200;
+        // Stomp always works (even when invincible)
+        d.alive = false; d.dying = 25; player.vy = -9; score += 200;
         sfxStomp(); sfxDonkeyDeath();
-        spawnParticles(d.x + d.w/2, d.y + d.h/2, 8, '#ff6600');
+        spawnParticles(d.x+d.w/2, d.y+d.h/2, 8, '#ff6600');
+        spawnFloatingText(d.x+d.w/2, d.y, '+200', '#ff6600');
         shakeFrames = 4; shakeMag = 2;
+      } else if (player.invincible > 0) {
+        // Spawn invincibility: donkey can't hurt player, pass harmlessly
+      } else if (player.hammerTimer > 0) {
+        d.alive = false; d.dying = 25; score += 200;
+        sfxDonkeyDeath();
+        spawnParticles(d.x+d.w/2, d.y+d.h/2, 8, '#ff6600');
+      } else if (player.power !== null) {
+        // Has fire/ice power: lose power, stay big, invincible
+        player.power = null;
+        player.invincible = 180;
+        sfxShrink();
+        spawnFloatingText(player.x+player.w/2, player.y-8, 'POWER LOST!', '#ff8800');
+        const pushDir = player.x < d.x ? -1 : 1;
+        player.vx = pushDir * 4; player.vy = -3;
+        d.x += d.facing * 10;
+        shakeFrames = 6; shakeMag = 2;
+      } else if (player.big) {
+        // Big but no power: shrink, invincible
+        shrinkPlayer();
+        const pushDir = player.x < d.x ? -1 : 1;
+        player.vx = pushDir * 5; player.vy = -4;
+        d.x += d.facing * 10;
+        shakeFrames = 8; shakeMag = 3;
+        spawnFloatingText(player.x+player.w/2, player.y-4, 'OUCH!', '#ff8800');
       } else {
-        sfxDeath(); bgmStop();
-        shakeFrames = 12; shakeMag = 3;
-        state = 'dead';
-        return;
+        // Small: death with knockback
+        const pushDir = player.x < d.x ? -1 : 1;
+        deathCause = 'enemy'; killPlayer(pushDir * 5, -9); return;
       }
     }
+  }
+
+  // Hammer timer
+  if (player.hammerTimer > 0) {
+    player.hammerTimer--;
+    player.hammerSwingTimer--;
+    if (player.hammerSwingTimer <= 0) { doHammerSwing(); player.hammerSwingTimer = 60; }
+  }
+
+  // Fireballs
+  for (let i = fireballs.length-1; i >= 0; i--) {
+    const fb = fireballs[i];
+    fb.x += fb.vx; fb.life--;
+    const ftx = Math.floor((fb.x + (fb.vx > 0 ? fb.w : 0)) / TILE);
+    const fty = Math.floor((fb.y + fb.h/2) / TILE);
+    if (getTile(ftx, fty) > 0 || fb.life <= 0 || fb.x < -20 || fb.x > LW*TILE+20) {
+      spawnParticles(fb.x+fb.w/2, fb.y+fb.h/2, 4, fb.kind==='fire' ? '#ff6600' : '#44ccff');
+      fireballs.splice(i, 1); continue;
+    }
+    let hit_donkey = false;
+    for (const d of donkeys) {
+      if (!d.alive || !hit(fb, d)) continue;
+      if (fb.kind === 'fire') {
+        d.alive = false; d.dying = 25; score += 300;
+        sfxFireHit(); sfxDonkeyDeath();
+        spawnParticles(d.x+d.w/2, d.y+d.h/2, 10, '#ff6600');
+        spawnFloatingText(d.x+d.w/2, d.y, '+300', '#ff8800');
+      } else {
+        // Ice: freeze for 5 seconds, don't kill
+        d.frozen = 300;
+        sfxIceHit();
+        spawnParticles(d.x+d.w/2, d.y+d.h/2, 8, '#44ccff');
+        spawnFloatingText(d.x+d.w/2, d.y, 'FROZEN!', '#44ccff');
+      }
+      fireballs.splice(i, 1); hit_donkey = true; break;
+    }
+    if (hit_donkey) continue;
   }
 
   // Coins
@@ -420,11 +1156,48 @@ function update() {
     if (c.got) continue;
     c.anim = (c.anim + 0.1) % 4;
     if (hit(player, c)) {
-      c.got = true; score += 10;
-      sfxCoin();
-      spawnParticles(c.x, c.y + 4, 6, '#ffff00');
+      c.got = true; score += 10; sfxCoin();
+      spawnParticles(c.x, c.y+4, 6, '#ffff00');
       spawnFloatingText(c.x, c.y, '+10', '#ffff00');
     }
+  }
+
+  // Powerups
+  for (const pu of powerups) {
+    if (pu.got) continue;
+    pu.anim = (pu.anim + 0.08) % 4;
+    if (hit(player, pu)) {
+      pu.got = true;
+      if (pu.kind === 'redFlower' || pu.kind === 'iceFlower') {
+        const newPower = pu.kind === 'redFlower' ? 'fire' : 'ice';
+        const col = newPower === 'fire' ? '#ff6600' : '#44ccff';
+        if (!player.big) growPlayer();
+        player.power = newPower;
+        sfxPowerup();
+        spawnParticles(pu.x+pu.w/2, pu.y+pu.h/2, 10, col);
+        spawnFloatingText(pu.x+pu.w/2, pu.y, newPower==='fire'?'FIRE!':'ICE!', col);
+      } else if (pu.kind === 'hammer') {
+        player.hammerTimer = 600; player.hammerSwingTimer = 60;
+        sfxHammerPickup();
+        spawnParticles(pu.x+pu.w/2, pu.y+pu.h/2, 10, '#cc8800');
+        spawnFloatingText(pu.x+pu.w/2, pu.y, 'HAMMER!', '#ffaa00');
+      } else if (pu.kind === 'redMushroom') {
+        if (!player.big) growPlayer();
+        else { sfxPowerup(); spawnFloatingText(pu.x+pu.w/2, pu.y, 'BIG!', '#ff4444'); }
+        spawnParticles(pu.x+pu.w/2, pu.y+pu.h/2, 10, '#ff4444');
+      } else if (pu.kind === 'blueMushroom') {
+        if (player.big) shrinkPlayer();
+        spawnParticles(pu.x+pu.w/2, pu.y+pu.h/2, 14, '#0088ff');
+        spawnFloatingText(pu.x+pu.w/2, pu.y, 'DB BOSS!', '#ff0000');
+        spawnDBBoss(pu.x + 200);
+      }
+    }
+  }
+
+  // DB Boss + barrels
+  if (state === 'playing') {
+    updateDBBoss();
+    updateBarrels();
   }
 
   camera.x = Math.max(0, Math.min(player.x - W/2 + player.w/2, LW*TILE - W));
@@ -432,46 +1205,13 @@ function update() {
 }
 
 // ── Death donkey horde ─────────────────────────
-function spawnDeathDonkeys(sx) {
-  deathDonkeys = [];
-  for (let i = 0; i < 1000; i++) {
-    deathDonkeys.push({
-      x:  sx + (Math.random() - 0.5) * 40,
-      y:  -Math.random() * H * 2,
-      vx: (Math.random() - 0.5) * 6,
-      vy: Math.random() * 4,
-    });
-  }
-}
-
-function updateDeathDonkeys() {
-  for (const d of deathDonkeys) {
-    d.vy += 0.55; d.x += d.vx; d.y += d.vy;
-    if (d.y > H - 8) { d.y = H - 8; d.vy *= -0.35; d.vx *= 0.85; }
-    if (d.x < 0)  { d.x = 0;  d.vx =  Math.abs(d.vx); }
-    if (d.x > W)  { d.x = W;  d.vx = -Math.abs(d.vx); }
-  }
-}
-
-function drawDeathDonkeys() {
-  ctx.fillStyle = '#aa5500';
-  for (const d of deathDonkeys) ctx.fillRect(d.x - 6, d.y - 7, 14, 11);
-  ctx.fillStyle = '#ffaa55';
-  for (const d of deathDonkeys) ctx.fillRect(d.x - 7, d.y - 2, 8, 7);
-  ctx.fillStyle = '#fff';
-  for (const d of deathDonkeys) { ctx.fillRect(d.x + 2, d.y - 6, 3, 2); ctx.fillRect(d.x + 6, d.y - 6, 3, 2); }
-  ctx.fillStyle = '#000';
-  for (const d of deathDonkeys) {
-    ctx.fillRect(d.x + 3, d.y - 5, 2, 2); ctx.fillRect(d.x + 7, d.y - 5, 2, 2);
-    ctx.fillRect(d.x + 2, d.y - 8, 3, 1); ctx.fillRect(d.x + 6, d.y - 8, 3, 1);
-  }
-}
 
 // ── Drawing ────────────────────────────────────
 function px(x, y, w, h, col) { ctx.fillStyle = col; ctx.fillRect(x, y, w, h); }
-
+let _cachedFont = '';
 function txt(str, x, y, size, col, shadow) {
-  ctx.font = `bold ${size}px monospace`;
+  const f = `bold ${size}px monospace`;
+  if (f !== _cachedFont) { ctx.font = f; _cachedFont = f; }
   if (shadow) { ctx.fillStyle = '#000'; ctx.fillText(str, x+2, y+2); }
   ctx.fillStyle = col; ctx.fillText(str, x, y);
 }
@@ -480,291 +1220,790 @@ function drawTile(tx, ty, type) {
   const sx = tx*TILE - camera.x, sy = ty*TILE;
   if (sx+TILE < 0 || sx > W) return;
   if (type === 1) {
-    px(sx, sy,   TILE, 4,      '#5aa818');
-    px(sx, sy+4, TILE, TILE-4, '#3d7a10');
+    px(sx, sy, TILE, TILE, '#350aad');
   } else if (type === 2) {
-    if (platformImg.complete && platformImg.naturalWidth > 0) {
+    if (platformImg.complete && platformImg.naturalWidth > 0)
       ctx.drawImage(platformImg, sx, sy, TILE, TILE);
-    } else {
-      px(sx, sy, TILE, TILE, '#909090');
-    }
+    else px(sx, sy, TILE, TILE, '#909090');
   }
 }
 
 function drawPlayer() {
   if (!player.alive) return;
-  if (player.invincible > 0 && Math.floor(player.invincible / 6) % 2) return;
+  if (player.invincible > 0 && Math.floor(player.invincible/6) % 2 && state !== 'dying') return;
 
   const sx  = Math.round(player.x - camera.x);
   const sy  = Math.round(player.y);
+
+  // Spinning death animation
+  if (state === 'dying') {
+    const cx = sx + player.w/2, cy = sy + player.h/2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(player.dyingAngle || 0);
+    ctx.fillStyle = player.big ? '#e04000' : '#cc3300';
+    ctx.fillRect(-player.w/2, -player.h/2, player.w, player.h);
+    // eyes X X
+    ctx.fillStyle = '#fff';
+    const ew = 4, eh = 4;
+    ctx.fillRect(-6, -player.h/4, ew, eh);
+    ctx.fillRect(2,  -player.h/4, ew, eh);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(-5, -player.h/4+1, 2, 2);
+    ctx.fillRect(3,  -player.h/4+1, 2, 2);
+    // X marks
+    ctx.strokeStyle = '#ff0000'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-7,-player.h/4); ctx.lineTo(-3,-player.h/4+4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-3,-player.h/4); ctx.lineTo(-7,-player.h/4+4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(1, -player.h/4); ctx.lineTo(5,-player.h/4+4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(5, -player.h/4); ctx.lineTo(1,-player.h/4+4); ctx.stroke();
+    ctx.restore();
+    return;
+  }
   const run = Math.abs(player.vx) > 0.3;
   const air = !player.onGround;
   const wf  = Math.floor(player.anim) % 2;
+  const sc  = player.big ? 1.5 : 1.0;
+
+  // Tint based on power
+  const powerTint = player.power === 'fire' ? 'rgba(255,100,0,0.25)'
+                  : player.power === 'ice'  ? 'rgba(100,200,255,0.25)' : null;
 
   ctx.save();
-  // Anchor at bottom-center (feet) for squash/stretch
-  ctx.translate(sx + player.w / 2, sy + player.h);
+  ctx.translate(sx + player.w/2, sy + player.h);
   if (player.squash > 0) {
-    const t = player.squash / 6;
-    ctx.scale(1 + 0.2 * t, 1 - 0.2 * t);
+    const t = player.squash/6; ctx.scale(sc*(1+0.2*t), sc*(1-0.2*t));
   } else if (player.stretch > 0) {
-    const t = player.stretch / 4;
-    ctx.scale(1 - 0.15 * t, 1 + 0.15 * t);
+    const t = player.stretch/4; ctx.scale(sc*(1-0.15*t), sc*(1+0.15*t));
+  } else {
+    ctx.scale(sc, sc);
   }
   if (player.facing === -1) ctx.scale(-1, 1);
 
-  // p() draws relative to feet (y negative = up)
-  const p = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y - player.h, w, h); };
+  const p = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y-player.h, w, h); };
+  const bob = run && !air && wf===1 ? 1 : 0;
+  const la  = run && !air ? (wf===0 ? 2 : -2) : 0;
 
-  const bob = run && !air && wf === 1 ? 1 : 0;
-  const la  = run && !air ? (wf === 0 ? 2 : -2) : 0;
-
-  // Legs & boots
   if (air) {
-    p(-6, 11, 4, 3, '#0000aa');  p(-7, 14, 6, 3, '#000');
-    p( 2, 11, 4, 3, '#0000aa');  p( 2, 14, 6, 3, '#000');
+    p(-6,11,4,3,'#0000aa'); p(-7,14,6,3,'#000');
+    p( 2,11,4,3,'#0000aa'); p( 2,14,6,3,'#000');
   } else {
-    p(-5, 11 + bob + la, 4, 4, '#0000aa');
-    p(-6, 15 + bob + la, 6, 3, '#000');
-    p( 1, 11 + bob - la, 4, 4, '#0000aa');
-    p( 0, 15 + bob - la, 6, 3, '#000');
+    p(-5,11+bob+la,4,4,'#0000aa'); p(-6,15+bob+la,6,3,'#000');
+    p( 1,11+bob-la,4,4,'#0000aa'); p( 0,15+bob-la,6,3,'#000');
+  }
+  p(-5, 5+bob,10,7,'#ff6600'); p(-5, 5+bob,10,2,'#0000aa');
+  p(-5,10+bob, 4,2,'#0000aa'); p( 1,10+bob, 4,2,'#0000aa');
+  p(-4,-1+bob, 8,7,'#ffaa55'); p( 1, 0+bob, 2,2,'#000');
+  p(-1, 3+bob, 3,2,'#cc7040'); p(-2, 4+bob, 7,2,'#000');
+  p(-6,-2+bob,12,2,'#ff0000'); p(-4,-6+bob, 8,5,'#ff0000');
+
+  // Power glow
+  if (powerTint) {
+    ctx.fillStyle = powerTint;
+    ctx.fillRect(-6, -player.h, 14, player.h);
   }
 
-  // Body
-  p(-5,  5 + bob, 10, 7, '#ff6600');
-  p(-5,  5 + bob, 10, 2, '#0000aa');
-  p(-5, 10 + bob,  4, 2, '#0000aa');
-  p( 1, 10 + bob,  4, 2, '#0000aa');
-
-  // Head
-  p(-4, -1 + bob, 8, 7, '#ffaa55');
-  p( 1,  0 + bob, 2, 2, '#000');
-  p(-1,  3 + bob, 3, 2, '#cc7040');
-  p(-2,  4 + bob, 7, 2, '#000');
-
-  // Hat
-  p(-6, -2 + bob, 12, 2, '#ff0000');
-  p(-4, -6 + bob,  8, 5, '#ff0000');
+  // Hammer — 2-frame animation at 6fps (every 10 game frames)
+  if (player.hammerTimer > 0) {
+    const hamFrame = Math.floor(frameN / 10) % 2; // 0=up, 1=smash
+    ctx.save(); ctx.translate(6, -10-bob);
+    if (hamFrame === 0) {
+      // Frame 0: hammer held up
+      ctx.fillStyle = '#8B4513'; ctx.fillRect(-1, -10, 3, 12);
+      ctx.fillStyle = '#888';    ctx.fillRect(-5, -16, 12, 6);
+      ctx.fillStyle = '#aaa';    ctx.fillRect(-4, -18, 10, 3);
+    } else {
+      // Frame 1: hammer smashing down
+      ctx.fillStyle = '#8B4513'; ctx.fillRect(-1, 0, 3, 10);
+      ctx.fillStyle = '#888';    ctx.fillRect(-5,  8, 12, 6);
+      ctx.fillStyle = '#aaa';    ctx.fillRect(-4,  6, 10, 3);
+    }
+    ctx.restore();
+  }
 
   ctx.restore();
 }
 
-// Fat donkey sprite
 function drawDonkey(d) {
   if (!d.alive && d.dying <= 0) return;
-  const sx = Math.round(d.x - camera.x);
-  const sy = Math.round(d.y);
-  if (sx < -60 || sx > W + 60) return;
-
+  const sx = Math.round(d.x - camera.x), sy = Math.round(d.y);
+  if (sx < -60 || sx > W+60) return;
+  // NES sprite flicker: when 5+ donkeys on screen, random ones drop frames
+  const visibleCount = donkeys.filter(x => x.alive && Math.abs(x.x - camera.x - W/2) < W).length;
+  if (visibleCount >= 5 && d.alive && Math.random() < 0.12) return;
   if (!d.alive && d.dying > 0) {
-    ctx.save();
-    ctx.translate(sx + d.w/2, sy + d.h);
-    ctx.scale(1.7, 0.12);
-    px(-d.w/2, -d.h, d.w, d.h, '#aa5500');
-    ctx.restore();
-    return;
+    ctx.save(); ctx.translate(sx+d.w/2, sy+d.h); ctx.scale(1.7, 0.12);
+    px(-d.w/2,-d.h, d.w, d.h, '#aa5500'); ctx.restore(); return;
   }
-
-  const fr = Math.floor(d.anim) % 2;
-  const la = fr === 0 ? 2 : -2;
-  const blink = (frameN + Math.floor(d.x / TILE) * 17) % 120 < 2;
-
+  const fr = Math.floor(d.anim)%2, la = fr===0 ? 2 : -2;
+  const blink = (frameN + Math.floor(d.x/TILE)*17) % 120 < 2;
   ctx.save();
-  if (d.facing === -1) { ctx.translate(sx + d.w, sy); ctx.scale(-1, 1); }
-  else ctx.translate(sx, sy);
-
-  // Ears
-  px(3,  -9, 5, 9, '#aa5500');
-  px(14, -9, 5, 9, '#aa5500');
-  px(4,  -7, 3, 6, '#ffaa55');
-  px(15, -7, 3, 6, '#ffaa55');
-
-  // Head
-  px(1, -2, 22, 13, '#cc7700');
-  // Snout
-  px(0,  4,  9,  9, '#ffaa55');
-  px(1,  7,  3,  2, '#000');
-  px(5,  7,  3,  2, '#000');
-  // Teeth
-  px(2, 12, 2, 2, '#ffffff');
-  px(5, 12, 2, 2, '#ffffff');
-  // Eyes
-  if (!blink) {
-    px(13, 0, 6, 4, '#ffffff');
-    px(14, 1, 4, 3, '#000');
-  } else {
-    px(13, 2, 6, 2, '#cc7700'); // closed eye
+  if (d.facing===-1) { ctx.translate(sx+d.w, sy); ctx.scale(-1,1); } else ctx.translate(sx,sy);
+  px(3,-9,5,9,'#aa5500'); px(14,-9,5,9,'#aa5500');
+  px(4,-7,3,6,'#ffaa55'); px(15,-7,3,6,'#ffaa55');
+  px(1,-2,22,13,'#cc7700');
+  px(0,4,9,9,'#ffaa55'); px(1,7,3,2,'#000'); px(5,7,3,2,'#000');
+  px(2,12,2,2,'#fff'); px(5,12,2,2,'#fff');
+  if (!blink) { px(13,0,6,4,'#fff'); px(14,1,4,3,'#000'); } else px(13,2,6,2,'#cc7700');
+  px(18,-2,6,3,'#000');
+  px(-2,11,28,14,'#aa5500'); px(0,13,24,10,'#cc7700'); px(4,15,14,8,'#ffaa00');
+  px(2,25+la,8,7,'#663300'); px(14,25-la,8,7,'#663300');
+  px(1,32+la,9,3,'#000');    px(13,32-la,9,3,'#000');
+  px(24,14,5,3,'#aa5500'); px(27,17,4,4,'#aa5500');
+  // Frozen tint
+  if (d.frozen > 0) {
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = '#88ddff';
+    ctx.fillRect(0, -9, d.w, d.h + 9);
+    ctx.globalAlpha = 1;
+    // Ice crystals
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(2, -10, 3, 3); ctx.fillRect(17, -10, 3, 3);
+    ctx.fillRect(8, 34, 3, 3);  ctx.fillRect(13, 34, 3, 3);
   }
-  px(18, -2, 6, 3, '#000'); // angry brow
-
-  // Body
-  px(-2, 11, 28, 14, '#aa5500');
-  px( 0, 13, 24, 10, '#cc7700');
-  px( 4, 15, 14,  8, '#ffaa00');
-
-  // Legs
-  px( 2, 25+la, 8, 7, '#663300');
-  px(14, 25-la, 8, 7, '#663300');
-  // Hooves
-  px( 1, 32+la, 9, 3, '#000');
-  px(13, 32-la, 9, 3, '#000');
-
-  // Tail
-  px(24, 14, 5, 3, '#aa5500');
-  px(27, 17, 4, 4, '#aa5500');
-
   ctx.restore();
 }
 
 function drawCoin(c) {
   if (c.got) return;
   const sx = Math.round(c.x - camera.x);
-  if (sx < -20 || sx > W + 20) return;
-  const bob = Math.sin(c.anim * Math.PI / 2) * 2;
+  if (sx < -20 || sx > W+20) return;
+  const bob = Math.sin(c.anim * Math.PI/2) * 2;
   const sy  = Math.round(c.y + bob);
-  px(sx+1, sy,   6, 8, '#ffff00');
-  px(sx+2, sy+1, 2, 2, '#ffffff'); // highlight pixel
+  px(sx+1, sy, 6, 8, '#ffff00'); px(sx+2, sy+1, 2, 2, '#ffffff');
+}
+
+function drawPowerup(pu) {
+  if (pu.got) return;
+  const sx = Math.round(pu.x - camera.x);
+  if (sx < -20 || sx > W+20) return;
+  const bob = Math.sin(pu.anim * Math.PI/2) * 2;
+  const sy  = Math.round(pu.y + bob);
+
+  if (pu.kind === 'redFlower') {
+    px(sx+5, sy+9, 2, 5, '#22aa22');  // stem
+    px(sx+3, sy+3, 6, 5, '#dd1111');  // petals
+    px(sx+1, sy+5, 10, 3, '#dd1111');
+    px(sx+4, sy+1, 4, 3, '#dd1111');
+    px(sx+4, sy+4, 4, 4, '#ffff00');  // center
+  } else if (pu.kind === 'iceFlower') {
+    px(sx+5, sy+9, 2, 5, '#22aa22');  // stem
+    px(sx+3, sy+3, 6, 5, '#44aaff');  // petals
+    px(sx+1, sy+5, 10, 3, '#44aaff');
+    px(sx+4, sy+1, 4, 3, '#44aaff');
+    px(sx+4, sy+4, 4, 4, '#ffffff');  // center
+    px(sx+5, sy+5, 2, 2, '#aaeeff');
+  } else if (pu.kind === 'hammer') {
+    px(sx+5, sy+4, 3, 10, '#8B4513');
+    px(sx+1, sy+2, 10, 5, '#888888');
+    px(sx+2, sy+1, 8,  2, '#aaaaaa');
+  } else if (pu.kind === 'redMushroom') {
+    px(sx+4, sy+7, 4, 7, '#ddaa88');   // stem
+    px(sx+1, sy+1, 10, 8, '#dd1111');  // cap
+    px(sx+2, sy,   8,  3, '#dd1111');
+    px(sx+3, sy+2, 2, 2, '#ffffff');   // dots
+    px(sx+7, sy+3, 2, 2, '#ffffff');
+    px(sx+2, sy+5, 2, 2, '#ffffff');
+  } else if (pu.kind === 'blueMushroom') {
+    px(sx+4, sy+7, 4, 7, '#ddaa88');   // stem
+    px(sx+1, sy+1, 10, 8, '#0044ff');  // cap
+    px(sx+2, sy,   8,  3, '#0044ff');
+    px(sx+3, sy+2, 2, 2, '#aaccff');   // dots
+    px(sx+7, sy+3, 2, 2, '#aaccff');
+    px(sx+2, sy+5, 2, 2, '#aaccff');
+    // Glow effect
+    ctx.globalAlpha = 0.3 + 0.2*Math.sin(pu.anim*Math.PI);
+    px(sx-1, sy-1, 14, 16, '#0088ff');
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawFireball(fb) {
+  const sx = Math.round(fb.x - camera.x);
+  if (sx < -20 || sx > W+20) return;
+  const sy = Math.round(fb.y);
+  if (fb.kind === 'fire') {
+    px(sx+1,sy+1,6,6,'#ff4400');
+    px(sx+2,sy,  4,3,'#ffaa00');
+    px(sx+3,sy+2,2,3,'#ffff00');
+  } else {
+    px(sx+1,sy+1,6,6,'#0088cc');
+    px(sx+2,sy,  4,3,'#44ccff');
+    px(sx+3,sy+2,2,3,'#ffffff');
+  }
 }
 
 function drawParticles() {
+  // Group by colour to minimise fillStyle changes
+  const byCol = {};
   for (const p of particles) {
-    ctx.globalAlpha = p.life / p.maxLife;
-    ctx.fillStyle = p.col;
-    ctx.fillRect(Math.round(p.x - camera.x), Math.round(p.y), 2, 2);
+    (byCol[p.col] = byCol[p.col] || []).push(p);
   }
-  ctx.globalAlpha = 1;
+  for (const col in byCol) {
+    ctx.fillStyle = col;
+    for (const p of byCol[col])
+      ctx.fillRect((p.x - camera.x + 0.5) | 0, p.y | 0, 2, 2);
+  }
 }
 
 function drawFloatingTexts() {
-  for (const ft of floatingTexts) {
-    ctx.globalAlpha = ft.life / ft.maxLife;
-    txt(ft.text, Math.round(ft.x - camera.x), Math.round(ft.y), 10, ft.col, false);
-  }
-  ctx.globalAlpha = 1;
+  for (const ft of floatingTexts)
+    txt(ft.text, (ft.x - camera.x + 0.5) | 0, ft.y | 0, 10, ft.col, false);
 }
 
 function drawFlag() {
-  const fx = Math.round((LW - 3) * TILE - camera.x);
-  if (fx < -20 || fx > W + 20) return;
-  const poleTop = GROUND_Y * TILE - 52;
-  px(fx, poleTop, 3, 52, '#aaaaaa');
-  px(fx+3, poleTop,    18, 10, '#ff0000');
-  px(fx+3, poleTop+10, 18,  8, '#ffffff');
-}
-
-function drawBackground() {
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, W, H);
+  const fx = Math.round((LW-3)*TILE - camera.x);
+  if (fx < -40 || fx > W+40) return;
+  const groundY = GROUND_Y*TILE;
+  if (currentLevel === 4) {
+    // Level 5: princess only shown after DB boss is spawned AND defeated
+    if (!dbBoss || dbBoss.alive) return;
+    const py = groundY - 32;
+    // Dress (#00FF00 green)
+    px(fx+2, py+14, 14, 18, '#00ff00'); // skirt
+    px(fx+5, py+8,  8, 10, '#00ff00'); // torso
+    // Skin
+    px(fx+6, py,    6,  9, '#ffcc88'); // head
+    px(fx+6, py+9,  6,  6, '#ffcc88'); // neck+shoulders
+    // Hair (blonde)
+    px(fx+5, py-2,  8,  5, '#ffdd00');
+    px(fx+4, py+2,  2,  6, '#ffdd00');
+    px(fx+12,py+2,  2,  6, '#ffdd00');
+    // Crown
+    px(fx+5, py-4,  8,  3, '#ffdd00');
+    px(fx+6, py-6,  2,  3, '#ffdd00');
+    px(fx+10,py-6,  2,  3, '#ffdd00');
+    px(fx+8, py-7,  2,  4, '#ff0000');
+    // Eyes
+    px(fx+7, py+3,  2,  2, '#000');
+    px(fx+10,py+3,  2,  2, '#000');
+    // Smile
+    px(fx+7, py+7,  4,  1, '#000');
+    // Arms
+    px(fx+2, py+9,  4, 8, '#00ff00');
+    px(fx+12,py+9,  4, 8, '#00ff00');
+    // Shoes
+    px(fx+4, py+30, 4, 3, '#8844aa');
+    px(fx+10,py+30, 4, 3, '#8844aa');
+    // Label
+    if (Math.floor(Date.now()/600)%2)
+      txt('PRINCESS!', fx-12, py-10, 10, '#ff88ff', true);
+  } else {
+    // Normal flag
+    const poleTop = groundY - 52;
+    px(fx, poleTop, 3, 52, '#aaaaaa');
+    px(fx+3, poleTop,    18, 10, '#ff0000');
+    px(fx+3, poleTop+10, 18,  8, '#ffffff');
+  }
 }
 
 function drawHUD() {
-  ctx.fillStyle = '#000'; ctx.fillRect(4, 4, 180, 26);
-  txt(`SCORE: ${score}`, 10, 22, 14, '#ffffff', false);
+  ctx.fillStyle = '#000'; ctx.fillRect(4, 4, 230, 26);
+  const scoreDisp = glitch.scoreGarble > 0 ? `SCORE: ${glitch.scoreVal}  LVL: ${currentLevel+1}` : `SCORE: ${score}  LVL: ${currentLevel+1}`;
+  txt(scoreDisp, 10, 22, 14, '#ffffff', false);
 
-  const pct = Math.min(player.x / ((LW - 3) * TILE), 1);
-  ctx.fillStyle = '#000'; ctx.fillRect(W/2 - 100, 6, 200, 12);
-  ctx.fillStyle = '#ffff00'; ctx.fillRect(W/2 - 100, 6, 200 * pct, 12);
-  ctx.strokeStyle = '#555'; ctx.lineWidth = 1; ctx.strokeRect(W/2 - 100, 6, 200, 12);
-  txt('FINISH', W/2 + 106, 17, 10, '#aaaaaa', false);
+  const pct = Math.min(player.x / ((LW-3)*TILE), 1);
+  ctx.fillStyle = '#000'; ctx.fillRect(W/2-100, 6, 200, 12);
+  ctx.fillStyle = '#ffff00'; ctx.fillRect(W/2-100, 6, 200*pct, 12);
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 1; ctx.strokeRect(W/2-100, 6, 200, 12);
+  txt(Math.floor(pct*100)+'%', W/2-100 + 200*pct - (pct > 0.85 ? 28 : -4), 17, 10, '#000', false);
+  txt('FINISH', W/2+106, 17, 10, '#aaaaaa', false);
 
-  // Mute indicator
-  txt(muted ? '✕' : '♪', W - 22, 20, 14, muted ? '#ff0000' : '#00ff00', false);
+  // Level timer
+  const secsLeft = Math.ceil(levelTimer / 60);
+  const timerDisp = glitch.timerGarble > 0 ? glitch.timerVal : secsLeft;
+  const timerCol = secsLeft <= 30 ? (Math.floor(Date.now()/250)%2 ? '#ff0000' : '#ff8800') : secsLeft <= 60 ? '#ffaa00' : '#ffffff';
+  txt(`TIME: ${timerDisp}`, W-110, 22, 14, timerCol, false);
+
+  // Power indicator
+  if (player.power === 'fire') {
+    ctx.fillStyle = '#000'; ctx.fillRect(4, 32, 72, 18);
+    txt('FIRE', 8, 46, 13, '#ff6600', false);
+    px(56,35,4,8,'#ff4400'); px(57,33,2,4,'#ffaa00');
+  } else if (player.power === 'ice') {
+    ctx.fillStyle = '#000'; ctx.fillRect(4, 32, 72, 18);
+    txt('ICE', 8, 46, 13, '#44ccff', false);
+    px(54,36,6,6,'#44aaff'); px(55,35,4,2,'#ffffff');
+  } else if (player.big) {
+    ctx.fillStyle = '#000'; ctx.fillRect(4, 32, 50, 18);
+    txt('BIG', 8, 46, 13, '#ff8888', false);
+  }
+
+  // Hammer timer
+  if (player.hammerTimer > 0) {
+    const secs = Math.ceil(player.hammerTimer/60);
+    ctx.fillStyle = '#000'; ctx.fillRect(W-88, 32, 84, 18);
+    txt(`HAMMER ${secs}s`, W-84, 46, 11, '#ffaa00', false);
+  }
+
+  txt(muted ? '\u2715' : '\u266a', W-22, 20, 14, muted ? '#ff0000' : '#00ff00', false);
+}
+
+// ── Screen drawers ─────────────────────────────
+function drawTitle() {
+  txt('DONKEY BONG', W/2-170, 68, 42, '#ff6600', true);
+  txt('THE RETURN OF JUMPMAN', W/2-196, 106, 24, '#ffff00', true);
 }
 
 function drawMenu() {
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  drawTitle();
 
-  txt('THE RETURN OF', W/2-152, 100, 32, '#ff6600', true);
-  txt('JUMPMAN', W/2-114, 144, 52, '#ffff00', true);
-
-  ctx.fillStyle = '#000'; ctx.fillRect(W/2-210, 168, 420, 168);
-  ctx.strokeStyle = '#ffff00'; ctx.lineWidth = 1.5; ctx.strokeRect(W/2-210, 168, 420, 168);
-  const lines = [
-    ['Arrow Keys / WASD', 'Move'],
-    ['Space / Up / W',    'Jump'],
-    ['Land on top of donkeys', 'Stomp & kill them'],
-    ['Fall into a pit',   'Instant death'],
-    ['Reach the flag',    'You win!'],
-  ];
-  for (let i = 0; i < lines.length; i++) {
-    txt(lines[i][0], W/2-198, 194+i*28, 13, '#00aaff', false);
-    txt('— ' + lines[i][1], W/2+14, 194+i*28, 13, '#ffffff', false);
+  // Two menu buttons: PLAY and TUTORIAL
+  const buttons = ['PLAY', 'TUTORIAL'];
+  const btnColors = ['#ffff00', '#00aaff'];
+  for (let i = 0; i < buttons.length; i++) {
+    const bx = W/2 - 90 + i * 96, by = 122, bw = 84, bh = 32;
+    const sel = mainMenuItem === i;
+    ctx.fillStyle = sel ? (i === 0 ? '#332200' : '#001133') : '#111';
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = sel ? btnColors[i] : '#333';
+    ctx.lineWidth = sel ? 2 : 1;
+    ctx.strokeRect(bx, by, bw, bh);
+    const label = (sel ? '» ' : '  ') + buttons[i];
+    txt(label, bx + 8, by + 22, 13, sel ? btnColors[i] : '#666', false);
   }
 
-  if (Math.floor(Date.now()/500)%2)
-    txt('PRESS  ENTER  TO  START', W/2-148, H-44, 22, '#ffff00', true);
+  // Quick-ref controls box
+  ctx.fillStyle = '#0a0a0a'; ctx.fillRect(W/2-210, 166, 420, 148);
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.strokeRect(W/2-210, 166, 420, 148);
+  const lines = [
+    ['Arrow Keys / WASD','Move'],
+    ['Space / Up / W','Jump'],
+    ['Q','Shoot (with fire/ice power)'],
+    ['Stomp donkeys from above','Kill them'],
+    ['Red/Ice Flower','Power + grow big'],
+    ['Reach the flag','Win!'],
+  ];
+  for (let i = 0; i < lines.length; i++) {
+    txt(lines[i][0], W/2-198, 188+i*22, 10, '#00aaff', false);
+    txt('— '+lines[i][1], W/2+4, 188+i*22, 10, '#555', false);
+  }
+
+  if (Math.floor(Date.now()/600)%2) txt('\u2190\u2192 choose  Enter confirm', W/2-120, H-20, 15, '#ffff00', true);
+}
+
+function drawLevelSelect() {
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  drawTitle();
+  txt('SELECT LEVEL', W/2-100, 148, 22, '#ffffff', true);
+  const names = ['LEVEL 1 — The Beginning','LEVEL 2 — Faster & Wider','LEVEL 3 — Brutal Gauntlet','LEVEL 4 — Maximum Donkey','LEVEL 5 — DB Final Boss'];
+  for (let i = 0; i < LEVELS.length; i++) {
+    const locked = i >= unlockedLevels, selected = i === menuSelection;
+    const y = 172 + i*36;
+    ctx.fillStyle = selected && !locked ? '#1a1a1a' : '#111';
+    ctx.fillRect(W/2-200, y-18, 400, 32);
+    if (selected) { ctx.strokeStyle = locked ? '#444' : '#ffff00'; ctx.lineWidth=1.5; ctx.strokeRect(W/2-200,y-18,400,32); }
+    if (locked) {
+      txt('LOCKED — '+names[i], W/2-110, y-2, 12, '#444', false);
+    } else {
+      if (selected) txt('>', W/2-188, y, 16, '#ffff00', false);
+      txt(names[i], W/2-168, y, 14, selected?'#ffff00':'#aaaaaa', false);
+    }
+  }
+  txt('\u2191\u2193 choose  Enter play  T=Tutorial  Esc back', W/2-180, H-24, 13, '#555', false);
+}
+
+function drawPaused() {
+  ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fillRect(0,0,W,H);
+  txt('PAUSED', W/2-74, H/2-80, 48, '#ffff00', true);
+  const items = ['RESUME','RESTART','TUTORIAL','MAIN MENU'];
+  for (let i = 0; i < items.length; i++) {
+    const y = H/2 - 20 + i * 34;
+    const sel = i === pauseSelection;
+    ctx.fillStyle = sel ? '#1a1a1a' : '#0a0a0a';
+    ctx.fillRect(W/2-130, y-18, 260, 28);
+    if (sel) { ctx.strokeStyle='#ffff00'; ctx.lineWidth=1.5; ctx.strokeRect(W/2-130,y-18,260,28); }
+    if (sel) txt('>', W/2-118, y, 16, '#ffff00', false);
+    txt(items[i], W/2-100, y, 16, sel?'#ffff00':'#aaaaaa', false);
+  }
+  if (Math.floor(Date.now()/600)%2) txt('\u2191\u2193 choose  Enter confirm  Esc resume', W/2-164, H-20, 15, '#ffff00', true);
 }
 
 function drawDead() {
-  ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(0,0,W,H);
   txt('YOU DIED', W/2-126, H/2-22, 50, '#ff0000', true);
-  txt('fell into the abyss...', W/2-120, H/2+20, 18, '#aaaaaa', true);
+  const msg = deathCause === 'enemy' ? 'hit by enemy' : deathCause === 'time' ? 'out of time!' : 'fell into the abyss...';
+  txt(msg, W/2 - Math.floor(msg.length * 5), H/2+20, 18, '#aaaaaa', true);
   txt(`Score: ${score}`, W/2-52, H/2+48, 18, '#ffff00', true);
-  if (Math.floor(Date.now()/500)%2)
-    txt('PRESS ENTER TO RETRY', W/2-144, H/2+82, 20, '#ffffff', true);
+  if (Math.floor(Date.now()/500)%2) txt('PRESS ENTER TO RETRY', W/2-144, H/2+82, 20, '#ffffff', true);
+  txt('T = Tutorial', W/2-56, H/2+112, 13, '#555', false);
 }
 
 function drawWin() {
-  ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0,0,W,H);
   ctx.fillStyle = '#ffff00';
   for (let i = 0; i < 24; i++) {
-    const t = Date.now()/1000;
-    ctx.font = '20px serif';
-    ctx.fillText('★', ((i*213+Math.sin(t+i)*30)%W+W)%W, ((i*117+Math.cos(t+i*0.7)*20)%160+160)%160+10);
+    const t = Date.now()/1000; ctx.font = '20px serif';
+    ctx.fillText('\u2605', ((i*213+Math.sin(t+i)*30)%W+W)%W, ((i*117+Math.cos(t+i*0.7)*20)%160+160)%160+10);
   }
-  txt('YOU WIN!', W/2-112, H/2-28, 52, '#ffff00', true);
-  txt(`Final Score: ${score}`, W/2-80, H/2+20, 20, '#00ff00', true);
-  if (Math.floor(Date.now()/500)%2)
-    txt('PRESS ENTER TO PLAY AGAIN', W/2-168, H/2+68, 18, '#ffffff', true);
+  txt('YOU WIN!', W/2-112, H/2-48, 52, '#ffff00', true);
+  txt(`Level ${currentLevel+1} Complete!`, W/2-110, H/2+8, 22, '#00ff00', true);
+  txt(`Score: ${score}`, W/2-60, H/2+36, 18, '#ffff00', true);
+  if (currentLevel+1 < LEVELS.length) {
+    if (Math.floor(Date.now()/500)%2) txt('ENTER=Next Level  M=Menu', W/2-148, H/2+74, 18, '#ffffff', true);
+  } else {
+    txt('ALL LEVELS COMPLETE!', W/2-152, H/2+70, 18, '#00ffff', true);
+    if (Math.floor(Date.now()/500)%2) txt('PRESS ENTER FOR MENU', W/2-144, H/2+98, 18, '#ffffff', true);
+  }
+}
+
+// ── Tutorial ───────────────────────────────────
+const TUTORIAL_PAGES = [
+  {
+    title: 'MOVING AROUND',
+    color: '#00aaff',
+    lines: [
+      ['← → or A D', 'Move left and right'],
+      ['Space / ↑ / W', 'Jump'],
+      ['Esc', 'Pause the game'],
+      ['M', 'Mute / unmute music'],
+    ],
+    tip: 'You start every level with 5 seconds of invincibility!',
+    tipCol: '#00ff88',
+    draw(cx, cy) {
+      // Jumpman silhouette running
+      ctx.fillStyle = '#ff6600';
+      ctx.fillRect(cx-8, cy-20, 16, 10);
+      ctx.fillStyle = '#ffaa55';
+      ctx.fillRect(cx-6, cy-30, 12, 12);
+      ctx.fillStyle = '#0000aa';
+      ctx.fillRect(cx-8, cy-10, 16, 10);
+      ctx.fillStyle = '#ff0000';
+      ctx.fillRect(cx-10, cy-32, 20, 4);
+      // Arrow keys
+      const keys2 = [['←',cx-36,cy+10],['→',cx+24,cy+10]];
+      for (const [k,kx,ky] of keys2) {
+        ctx.fillStyle = '#333'; ctx.fillRect(kx, ky-14, 22, 20);
+        ctx.strokeStyle = '#666'; ctx.lineWidth=1; ctx.strokeRect(kx, ky-14, 22, 20);
+        txt(k, kx+4, ky+2, 12, '#fff', false);
+      }
+    }
+  },
+  {
+    title: 'FIGHTING DONKEYS',
+    color: '#ff6600',
+    lines: [
+      ['Jump ON TOP', 'Stomp to kill a donkey'],
+      ['Ice flower + Q', 'Freeze a donkey for 5s'],
+      ['Fire flower + Q', 'Incinerate a donkey'],
+      ['Hammer', 'Kill any donkey you touch'],
+    ],
+    tip: 'Frozen donkeys die from any touch — no stomp needed!',
+    tipCol: '#44ccff',
+    draw(cx, cy) {
+      // Donkey
+      ctx.fillStyle = '#cc7700'; ctx.fillRect(cx+10, cy-12, 22, 14);
+      ctx.fillStyle = '#ffaa55'; ctx.fillRect(cx+10, cy+2,  10, 10);
+      ctx.fillStyle = '#aa5500'; ctx.fillRect(cx+10, cy-20, 6, 10);
+      ctx.fillStyle = '#aa5500'; ctx.fillRect(cx+22, cy-20, 6, 10);
+      ctx.fillStyle = '#aa5500'; ctx.fillRect(cx+8,  cy+12, 26, 10);
+      // Foot arrow down
+      ctx.fillStyle = '#ffff00';
+      ctx.beginPath(); ctx.moveTo(cx-6,cy-28); ctx.lineTo(cx+6,cy-28); ctx.lineTo(cx,cy-18); ctx.closePath(); ctx.fill();
+    }
+  },
+  {
+    title: 'POWER-UPS',
+    color: '#ff44ff',
+    lines: [
+      ['Red flower', 'Fire power + grow big'],
+      ['Ice flower', 'Ice power + grow big'],
+      ['Red mushroom', 'Grow big'],
+      ['Hammer', '10 seconds of donkey-killing'],
+    ],
+    tip: 'Getting hit while powered up just removes your power.',
+    tipCol: '#ffaa00',
+    draw(cx, cy) {
+      const items = [
+        () => { px(cx-30,cy-8,2,10,'#22aa22'); px(cx-34,cy-14,10,10,'#dd1111'); px(cx-32,cy-18,6,6,'#dd1111'); px(cx-30,cy-11,4,4,'#ffff00'); },
+        () => { px(cx-8, cy-8,2,10,'#22aa22'); px(cx-12,cy-14,10,10,'#44aaff'); px(cx-10,cy-18,6,6,'#44aaff'); px(cx-8, cy-11,4,4,'#ffffff'); },
+        () => { px(cx+14,cy-4,4,8,'#ddaa88'); px(cx+10,cy-12,12,10,'#ff2200'); px(cx+12,cy-14,8,4,'#ff2200'); px(cx+14,cy-9,2,2,'#fff'); px(cx+18,cy-8,2,2,'#fff'); },
+        () => { px(cx+34,cy-4,3,10,'#8B4513'); px(cx+30,cy-8,10,6,'#888'); px(cx+31,cy-10,8,3,'#aaa'); },
+      ];
+      for (const fn of items) fn();
+    }
+  },
+  {
+    title: 'THE GOAL',
+    color: '#ffff00',
+    lines: [
+      ['Reach the end', 'Get to the flag to win'],
+      ['Collect coins', '+10 points each'],
+      ['Stomp donkeys', '+200 points each'],
+      ['Level 5 only', 'Collect blue mushroom → fight DB boss!'],
+    ],
+    tip: 'Beat all 5 levels to rescue the princess!',
+    tipCol: '#ff88ff',
+    draw(cx, cy) {
+      // Flag
+      ctx.fillStyle = '#aaaaaa'; ctx.fillRect(cx-2, cy-36, 3, 36);
+      ctx.fillStyle = '#ff0000'; ctx.fillRect(cx+1, cy-36, 18, 10);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(cx+1, cy-26, 18,  8);
+      // Coin
+      ctx.fillStyle = '#ffff00'; ctx.fillRect(cx+28, cy-14, 8, 10);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(cx+30, cy-12, 2,  2);
+    }
+  },
+];
+
+function drawTutorial() {
+  const page = TUTORIAL_PAGES[tutorialPage];
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+
+  // Title bar
+  ctx.fillStyle = page.color;
+  ctx.fillRect(0, 0, W, 44);
+  ctx.fillStyle = '#000';
+  ctx.font = 'bold 22px monospace';
+  ctx.fillText(page.title, W/2 - ctx.measureText(page.title).width/2, 30);
+
+  // Page dots
+  for (let i = 0; i < TUTORIAL_PAGES.length; i++) {
+    ctx.fillStyle = i === tutorialPage ? '#ffffff' : '#444';
+    ctx.beginPath(); ctx.arc(W/2 - (TUTORIAL_PAGES.length-1)*12 + i*24, 58, 5, 0, Math.PI*2); ctx.fill();
+  }
+
+  // Illustration
+  page.draw(W/2, 110);
+
+  // Content box
+  ctx.fillStyle = '#111'; ctx.fillRect(W/2-230, 148, 460, 112);
+  ctx.strokeStyle = page.color; ctx.lineWidth = 1.5; ctx.strokeRect(W/2-230, 148, 460, 112);
+  for (let i = 0; i < page.lines.length; i++) {
+    txt(page.lines[i][0], W/2-218, 172+i*24, 12, '#00aaff', false);
+    txt('— ' + page.lines[i][1], W/2-60, 172+i*24, 12, '#ffffff', false);
+  }
+
+  // Tip box
+  ctx.fillStyle = '#1a1a00'; ctx.fillRect(W/2-230, 268, 460, 36);
+  ctx.strokeStyle = page.tipCol; ctx.lineWidth = 1; ctx.strokeRect(W/2-230, 268, 460, 36);
+  txt('TIP: ' + page.tip, W/2-218, 291, 10, page.tipCol, false);
+
+  // Navigation
+  const isLast = tutorialPage === TUTORIAL_PAGES.length - 1;
+  ctx.fillStyle = '#111'; ctx.fillRect(W/2-230, 312, 460, 34);
+  if (tutorialPage > 0) txt('← Back', W/2-218, 334, 12, '#aaaaaa', false);
+  if (Math.floor(Date.now()/500)%2) {
+    txt(isLast ? 'Enter — START GAME' : 'Enter / → — Next', W/2 + (isLast ? -88 : -70), 334, 13, '#ffff00', false);
+  }
+  txt(`${tutorialPage+1} / ${TUTORIAL_PAGES.length}`, W/2+190, 334, 11, '#555', false);
+}
+
+// ── 1982 Glitch System ─────────────────────────
+const glitch = {
+  tear: 0, tearY: 0, tearH: 0, tearShift: 0,   // screen tear
+  noise: 0,                                       // random pixel scatter
+  tint: 0, tintCol: '',                           // full-screen color flash
+  scoreGarble: 0, scoreVal: '',                   // HUD score corruption
+  timerGarble: 0, timerVal: 0,                    // HUD timer corruption
+  ghosts: [],                                     // dead-enemy ghost flashes [{x,y,w,h,col,t}]
+  scanFlicker: 0,                                 // scanline row flicker
+};
+
+function tickGlitches() {
+  if (glitch.tear   > 0) glitch.tear--;
+  if (glitch.noise  > 0) glitch.noise--;
+  if (glitch.tint   > 0) glitch.tint--;
+  if (glitch.scoreGarble > 0) glitch.scoreGarble--;
+  if (glitch.timerGarble > 0) glitch.timerGarble--;
+  if (glitch.scanFlicker > 0) glitch.scanFlicker--;
+  for (let i = glitch.ghosts.length-1; i >= 0; i--) { glitch.ghosts[i].t--; if (glitch.ghosts[i].t <= 0) glitch.ghosts.splice(i,1); }
+
+  const r = Math.random;
+  // Screen tear: rare horizontal band shifts sideways
+  if (!glitch.tear && r() < 0.0018) {
+    glitch.tear     = 2 + (r()*3|0);
+    glitch.tearY    = (r() * (H-10)) | 0;
+    glitch.tearH    = 1 + (r()*8|0);
+    glitch.tearShift = ((r()*24|0)+4) * (r()<0.5?1:-1);
+  }
+  // Random pixel scatter
+  if (!glitch.noise && r() < 0.0025) glitch.noise = 1 + (r()*2|0);
+  // Full-screen color tint flash
+  if (!glitch.tint && r() < 0.0008) {
+    glitch.tint = 1;
+    const c = r();
+    glitch.tintCol = c < 0.4 ? 'rgba(255,0,0,0.12)' : c < 0.7 ? 'rgba(0,80,255,0.1)' : 'rgba(255,255,255,0.08)';
+  }
+  // Score digit garble
+  if (!glitch.scoreGarble && r() < 0.0012) {
+    glitch.scoreGarble = 1;
+    glitch.scoreVal = String(score).split('').map(d => r()<0.4 ? '0123456789ABCDEF'[r()*16|0] : d).join('');
+  }
+  // Timer digit garble
+  if (!glitch.timerGarble && r() < 0.001) {
+    glitch.timerGarble = 1;
+    glitch.timerVal = (Math.ceil(levelTimer/60) + ((r()*40|0)-20)) | 0;
+  }
+  // Scanline row flicker
+  if (!glitch.scanFlicker && r() < 0.002) glitch.scanFlicker = 1 + (r()*3|0);
+}
+
+function spawnGlitchGhost(d) {
+  if (glitch.ghosts.length < 4 && Math.random() < 0.3) {
+    glitch.ghosts.push({ x: d.x, y: d.y, w: d.w, h: d.h, col: '#884400', t: 4 + (Math.random()*4|0) });
+  }
+}
+
+function drawGlitches() {
+  // Scanline row flicker: random horizontal strips of inverted brightness
+  if (glitch.scanFlicker > 0) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = 'rgba(80,80,80,0.18)';
+    for (let y = (Math.random()*8|0); y < H; y += 8 + (Math.random()*6|0))
+      ctx.fillRect(0, y, W, 1 + (Math.random()*2|0));
+    ctx.restore();
+  }
+  // Screen tear: copy strip offset (draw solid garble band)
+  if (glitch.tear > 0) {
+    // Draw the strip from the already-rendered canvas, shifted
+    ctx.drawImage(ctx.canvas, 0, glitch.tearY, W, glitch.tearH,
+                              glitch.tearShift, glitch.tearY, W, glitch.tearH);
+    // Add RGB noise in the seam
+    for (let x = 0; x < W; x += 3) {
+      if (Math.random() < 0.35) {
+        ctx.fillStyle = `rgb(${Math.random()*255|0},${Math.random()*255|0},${Math.random()*255|0})`;
+        ctx.fillRect(x, glitch.tearY, 3, glitch.tearH);
+      }
+    }
+  }
+  // Random pixel scatter
+  if (glitch.noise > 0) {
+    const count = 6 + (Math.random()*12|0);
+    for (let i = 0; i < count; i++) {
+      ctx.fillStyle = `rgb(${Math.random()*255|0},${Math.random()*255|0},${Math.random()*255|0})`;
+      ctx.fillRect(Math.random()*W|0, Math.random()*H|0, 2, 2);
+    }
+  }
+  // Full-screen tint
+  if (glitch.tint > 0) {
+    ctx.fillStyle = glitch.tintCol;
+    ctx.fillRect(0, 0, W, H);
+  }
+  // Ghost sprites of dead enemies
+  for (const g of glitch.ghosts) {
+    if (g.t % 2 === 0) {
+      ctx.fillStyle = g.col;
+      ctx.fillRect(Math.round(g.x - camera.x), Math.round(g.y), g.w, g.h);
+    }
+  }
 }
 
 // ── Render ─────────────────────────────────────
 function render() {
   ctx.clearRect(0, 0, W, H);
-  if (state === 'menu') { drawMenu(); return; }
+  if (state === 'menu')        { drawMenu(); return; }
+  if (state === 'levelselect') { drawLevelSelect(); return; }
+  if (state === 'tutorial')    { drawTutorial(); return; }
 
-  // Screen shake
   ctx.save();
-  if (shakeFrames > 0) {
-    ctx.translate(
-      (Math.random() - 0.5) * shakeMag * 2,
-      (Math.random() - 0.5) * shakeMag * 2
-    );
-  }
+  if (shakeFrames > 0)
+    ctx.translate((Math.random()-0.5)*shakeMag*2, (Math.random()-0.5)*shakeMag*2);
 
-  drawBackground();
+  if (state !== 'playing' && state !== 'dying' && state !== 'paused' && state !== 'dead' && state !== 'win') { ctx.restore(); return; }
 
-  const tx0 = Math.floor(camera.x / TILE);
-  const tx1 = Math.ceil((camera.x + W) / TILE);
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+
+  const tx0 = Math.floor(camera.x/TILE), tx1 = Math.ceil((camera.x+W)/TILE);
   for (let ty = 0; ty < LH; ty++)
-    for (let tx = tx0; tx <= tx1; tx++) {
-      const t = getTile(tx, ty);
-      if (t > 0) drawTile(tx, ty, t);
-    }
+    for (let tx = tx0; tx <= tx1; tx++) { const t = getTile(tx,ty); if (t>0) drawTile(tx,ty,t); }
 
   drawFlag();
-  for (const c of coins) drawCoin(c);
-  for (const d of donkeys) drawDonkey(d);
+  for (const c of coins)    drawCoin(c);
+  for (const pu of powerups) drawPowerup(pu);
+  for (const fb of fireballs) drawFireball(fb);
+  for (const d of donkeys)  drawDonkey(d);
+  drawBarrels();
+  drawDBBoss();
   drawParticles();
   drawFloatingTexts();
   drawPlayer();
+  drawGlitches();
 
-  ctx.restore(); // end shake
-
+  ctx.restore();
   drawHUD();
 
-  if (state === 'dead') { drawDeathDonkeys(); drawDead(); }
-  if (state === 'win')  drawWin();
+  if (state === 'paused') drawPaused();
+  if (state === 'dead')   { drawDead(); }
+  if (state === 'win')    drawWin();
 }
 
 // ── Loop ───────────────────────────────────────
 function loop() {
-  if (state === 'menu' && keys['Enter']) {
-    keys['Enter'] = false; resetGame();
-  } else if ((state === 'dead' || state === 'win') && keys['Enter']) {
-    keys['Enter'] = false; state = 'menu';
+  if (state === 'menu') {
+    if (keys['ArrowLeft']  || keys['KeyA']) { keys['ArrowLeft']=keys['KeyA']=false; mainMenuItem = 0; }
+    if (keys['ArrowRight'] || keys['KeyD']) { keys['ArrowRight']=keys['KeyD']=false; mainMenuItem = 1; }
+    if (keys['Enter']) {
+      keys['Enter'] = false;
+      if (mainMenuItem === 1) {
+        tutorialPage = 0; tutorialReturn = 'menu'; state = 'tutorial';
+      } else {
+        menuSelection = 0; state = 'levelselect';
+      }
+    }
   }
-  if (state === 'dead') updateDeathDonkeys();
+  if (state === 'levelselect') {
+    if (keys['ArrowUp']   || keys['KeyW']) { keys['ArrowUp']=keys['KeyW']=false; menuSelection = Math.max(0,menuSelection-1); }
+    if (keys['ArrowDown'] || keys['KeyS']) { keys['ArrowDown']=keys['KeyS']=false; menuSelection = Math.min(LEVELS.length-1,menuSelection+1); }
+    if (keys['Enter']) {
+      keys['Enter'] = false;
+      if (menuSelection < unlockedLevels) {
+        // Show tutorial first time playing level 1
+        if (menuSelection === 0 && !localStorage.getItem(TUTORIAL_SEEN_KEY)) {
+          tutorialPage = 0; tutorialReturn = 'newgame'; state = 'tutorial';
+        } else {
+          resetGame(menuSelection);
+        }
+      }
+    }
+    if (keys['Escape']) { keys['Escape']=false; state='menu'; }
+  }
+  if (state === 'tutorial') {
+    const isLast = tutorialPage === TUTORIAL_PAGES.length - 1;
+    if (keys['ArrowRight'] || keys['Enter']) {
+      keys['ArrowRight'] = keys['Enter'] = false;
+      if (isLast) {
+        localStorage.setItem(TUTORIAL_SEEN_KEY, '1');
+        if (tutorialReturn === 'newgame') { resetGame(0); }
+        else if (tutorialReturn === 'paused') { state = 'paused'; }
+        else if (tutorialReturn === 'dead') { state = 'dead'; }
+        else if (tutorialReturn === 'levelselect') { state = 'levelselect'; }
+        else { state = 'menu'; }
+      } else {
+        tutorialPage++;
+      }
+    }
+    if (keys['ArrowLeft']) {
+      keys['ArrowLeft'] = false;
+      tutorialPage = Math.max(0, tutorialPage - 1);
+    }
+    if (keys['Escape']) {
+      keys['Escape'] = false;
+      if (tutorialReturn === 'paused') state = 'paused';
+      else if (tutorialReturn === 'dead') state = 'dead';
+      else if (tutorialReturn === 'levelselect') state = 'levelselect';
+      else state = 'menu';
+    }
+  }
+  if (state === 'paused') {
+    if (keys['ArrowUp']   || keys['KeyW']) { keys['ArrowUp']=keys['KeyW']=false; pauseSelection=(pauseSelection+3)%4; }
+    if (keys['ArrowDown'] || keys['KeyS']) { keys['ArrowDown']=keys['KeyS']=false; pauseSelection=(pauseSelection+1)%4; }
+    if (keys['Enter']) {
+      keys['Enter'] = false;
+      if (pauseSelection===0) { state='playing'; bgmPlay(); }
+      else if (pauseSelection===1) { resetGame(currentLevel); }
+      else if (pauseSelection===2) { tutorialPage=0; tutorialReturn='paused'; state='tutorial'; }
+      else { bgmStop(); state='menu'; }
+    }
+  }
+  if (state === 'levelselect' && keys['KeyT']) { keys['KeyT']=false; tutorialPage=0; tutorialReturn='levelselect'; state='tutorial'; }
+  if (state === 'dead' && keys['Enter'])  { keys['Enter']=false; resetGame(currentLevel); }
+  if (state === 'dead' && keys['KeyT'])   { keys['KeyT']=false; tutorialPage=0; tutorialReturn='dead'; state='tutorial'; }
+  if (state === 'win'  && keys['Enter'])  { keys['Enter']=false; currentLevel+1 < LEVELS.length ? resetGame(currentLevel+1) : (state='menu'); }
+  if (state === 'win'  && keys['KeyM'])   { keys['KeyM']=false; state='menu'; }
+
   update();
   render();
   requestAnimationFrame(loop);
