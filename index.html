@@ -1621,7 +1621,7 @@ function drawLevelSelect() {
         txt('HI: '+highScores[i], W/2+120, y, 12, selected?'#ffaa00':'#555', false);
     }
   }
-  txt('\u2191\u2193 choose  Enter play  T=Tutorial  Esc back', W/2-180, H-24, 13, '#555', false);
+  txt('\u2191\u2193 choose  Enter play  Esc back', W/2-140, H-24, 13, '#555', false);
   if (prsntMode) txt('PRSNT MODE', W-94, 14, 11, '#00ff88', false);
 }
 
@@ -1648,7 +1648,6 @@ function drawDead() {
   txt(msg, W/2 - Math.floor(msg.length * 5), H/2+20, 18, '#aaaaaa', true);
   txt(`Score: ${score}`, W/2-52, H/2+48, 18, '#ffff00', true);
   if (Math.floor(Date.now()/500)%2) txt('PRESS ENTER TO RETRY', W/2-144, H/2+82, 20, '#ffffff', true);
-  txt('T = Tutorial', W/2-56, H/2+112, 13, '#555', false);
 }
 
 function drawWin() {
@@ -1925,9 +1924,8 @@ function loop() {
       else { bgmStop(); state='menu'; }
     }
   }
-  if (state === 'levelselect' && keys['KeyT']) { keys['KeyT']=false; tutorialPage=0; tutorialReturn='levelselect'; state='tutorial'; }
+
   if (state === 'dead' && keys['Enter'])  { keys['Enter']=false; resetGame(currentLevel); }
-  if (state === 'dead' && keys['KeyT'])   { keys['KeyT']=false; tutorialPage=0; tutorialReturn='dead'; state='tutorial'; }
   if (state === 'win'  && keys['Enter'])  { keys['Enter']=false; currentLevel+1 < LEVELS.length ? resetGame(currentLevel+1) : (state='menu'); }
   if (state === 'win'  && keys['KeyM'])   { keys['KeyM']=false; state='menu'; }
 
