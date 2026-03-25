@@ -551,9 +551,12 @@ let pauseSelection = 0; // 0=Resume 1=Restart 2=Tutorial 3=Menu
 let currentLevel = 0;
 const TUTORIAL_SEEN_KEY = 'dbong_tutorial_seen';
 const UNLOCKED_LEVELS_KEY = 'dbong_unlocked_levels';
+const HS_KEY = 'dbong_highscores';
 let prsntMode = false;
 let menuTypeBuffer = '';
 let unlockedLevels = parseInt(localStorage.getItem(UNLOCKED_LEVELS_KEY) || '1', 10);
+let highScores = JSON.parse(localStorage.getItem(HS_KEY) || 'null') || Array(5).fill(0);
+let newHighScore = false;
 let menuSelection = 0;
 
 function resetGame(lvlIdx) {
@@ -1034,6 +1037,12 @@ function update() {
       if (currentLevel + 1 > unlockedLevels - 1 && currentLevel + 1 < LEVELS.length) {
         unlockedLevels = currentLevel + 2;
         if (!prsntMode) localStorage.setItem(UNLOCKED_LEVELS_KEY, unlockedLevels);
+      }
+      newHighScore = false;
+      if (!prsntMode && score > highScores[currentLevel]) {
+        highScores[currentLevel] = score;
+        localStorage.setItem(HS_KEY, JSON.stringify(highScores));
+        newHighScore = true;
       }
       state = 'win'; return;
     }
@@ -1608,6 +1617,8 @@ function drawLevelSelect() {
     } else {
       if (selected) txt('>', W/2-188, y, 16, '#ffff00', false);
       txt(names[i], W/2-168, y, 14, selected?'#ffff00':'#aaaaaa', false);
+      if (!prsntMode && highScores[i] > 0)
+        txt('HI: '+highScores[i], W/2+120, y, 12, selected?'#ffaa00':'#555', false);
     }
   }
   txt('\u2191\u2193 choose  Enter play  T=Tutorial  Esc back', W/2-180, H-24, 13, '#555', false);
@@ -1650,11 +1661,18 @@ function drawWin() {
   txt('YOU WIN!', W/2-112, H/2-48, 52, '#ffff00', true);
   txt(`Level ${currentLevel+1} Complete!`, W/2-110, H/2+8, 22, '#00ff00', true);
   txt(`Score: ${score}`, W/2-60, H/2+36, 18, '#ffff00', true);
+  if (!prsntMode) {
+    if (newHighScore) {
+      if (Math.floor(Date.now()/400)%2) txt('NEW HIGH SCORE!', W/2-116, H/2+60, 20, '#ff88ff', true);
+    } else if (highScores[currentLevel] > 0) {
+      txt(`Best: ${highScores[currentLevel]}`, W/2-52, H/2+60, 14, '#aaaaaa', true);
+    }
+  }
   if (currentLevel+1 < LEVELS.length) {
-    if (Math.floor(Date.now()/500)%2) txt('ENTER=Next Level  M=Menu', W/2-148, H/2+74, 18, '#ffffff', true);
+    if (Math.floor(Date.now()/500)%2) txt('ENTER=Next Level  M=Menu', W/2-148, H/2+84, 18, '#ffffff', true);
   } else {
-    txt('ALL LEVELS COMPLETE!', W/2-152, H/2+70, 18, '#00ffff', true);
-    if (Math.floor(Date.now()/500)%2) txt('PRESS ENTER FOR MENU', W/2-144, H/2+98, 18, '#ffffff', true);
+    txt('ALL LEVELS COMPLETE!', W/2-152, H/2+80, 18, '#00ffff', true);
+    if (Math.floor(Date.now()/500)%2) txt('PRESS ENTER FOR MENU', W/2-144, H/2+108, 18, '#ffffff', true);
   }
 }
 
