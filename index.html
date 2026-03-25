@@ -148,6 +148,16 @@ addEventListener('keydown', e => {
   keys[e.code] = true;
   if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
   initAudio();
+  if (state === 'menu' && e.key.length === 1 && /[a-z]/i.test(e.key)) {
+    menuTypeBuffer = (menuTypeBuffer + e.key.toLowerCase()).slice(-9);
+  }
+  if (e.code === 'Enter' && state === 'menu') {
+    if (menuTypeBuffer === 'prsntmode') {
+      prsntMode = true;
+      unlockedLevels = LEVELS.length;
+    }
+    menuTypeBuffer = '';
+  }
   if (e.code === 'KeyM') { muted = !muted; if (masterGain) masterGain.gain.value = muted ? 0 : 0.6; }
   if (e.code === 'Escape') {
     if (state === 'playing') { state = 'paused'; pauseSelection = 0; bgMusic.pause(); }
@@ -539,7 +549,11 @@ let tutorialReturn = 'menu'; // where to go after tutorial ('menu','playing','de
 let mainMenuItem = 0;   // 0=Play, 1=Tutorial
 let pauseSelection = 0; // 0=Resume 1=Restart 2=Tutorial 3=Menu
 let currentLevel = 0;
-let unlockedLevels = 1;
+const TUTORIAL_SEEN_KEY = 'dbong_tutorial_seen';
+const UNLOCKED_LEVELS_KEY = 'dbong_unlocked_levels';
+let prsntMode = false;
+let menuTypeBuffer = '';
+let unlockedLevels = parseInt(localStorage.getItem(UNLOCKED_LEVELS_KEY) || '1', 10);
 let menuSelection = 0;
 
 function resetGame(lvlIdx) {
@@ -1017,8 +1031,10 @@ function update() {
       spawnFloatingText(player.x + player.w/2, player.y - 16, msg, '#ff0000');
     } else {
       sfxWin(); bgmStop();
-      if (currentLevel + 1 > unlockedLevels - 1 && currentLevel + 1 < LEVELS.length)
+      if (currentLevel + 1 > unlockedLevels - 1 && currentLevel + 1 < LEVELS.length) {
         unlockedLevels = currentLevel + 2;
+        if (!prsntMode) localStorage.setItem(UNLOCKED_LEVELS_KEY, unlockedLevels);
+      }
       state = 'win'; return;
     }
   }
@@ -1573,6 +1589,7 @@ function drawMenu() {
   }
 
   if (Math.floor(Date.now()/600)%2) txt('\u2190\u2192 choose  Enter confirm', W/2-120, H-20, 15, '#ffff00', true);
+  if (prsntMode) txt('PRSNT MODE', W-94, 14, 11, '#00ff88', false);
 }
 
 function drawLevelSelect() {
@@ -1581,7 +1598,7 @@ function drawLevelSelect() {
   txt('SELECT LEVEL', W/2-100, 148, 22, '#ffffff', true);
   const names = ['LEVEL 1 — The Beginning','LEVEL 2 — Faster & Wider','LEVEL 3 — Brutal Gauntlet','LEVEL 4 — Maximum Donkey','LEVEL 5 — DG Final Boss'];
   for (let i = 0; i < LEVELS.length; i++) {
-    const locked = i >= unlockedLevels, selected = i === menuSelection;
+    const locked = !prsntMode && i >= unlockedLevels, selected = i === menuSelection;
     const y = 172 + i*36;
     ctx.fillStyle = selected && !locked ? '#1a1a1a' : '#111';
     ctx.fillRect(W/2-200, y-18, 400, 32);
@@ -1594,6 +1611,7 @@ function drawLevelSelect() {
     }
   }
   txt('\u2191\u2193 choose  Enter play  T=Tutorial  Esc back', W/2-180, H-24, 13, '#555', false);
+  if (prsntMode) txt('PRSNT MODE', W-94, 14, 11, '#00ff88', false);
 }
 
 function drawPaused() {
@@ -1839,9 +1857,14 @@ function loop() {
     if (keys['ArrowDown'] || keys['KeyS']) { keys['ArrowDown']=keys['KeyS']=false; menuSelection = Math.min(LEVELS.length-1,menuSelection+1); }
     if (keys['Enter']) {
       keys['Enter'] = false;
-      if (menuSelection < unlockedLevels) {
-        // Show tutorial first time playing level 1
-        resetGame(menuSelection);
+      const canPlay = prsntMode || menuSelection < unlockedLevels;
+      if (canPlay) {
+        const showTutorial = menuSelection === 0 && (prsntMode || !localStorage.getItem(TUTORIAL_SEEN_KEY));
+        if (showTutorial) {
+          tutorialPage = 0; tutorialReturn = 'newgame'; state = 'tutorial';
+        } else {
+          resetGame(menuSelection);
+        }
       }
     }
     if (keys['Escape']) { keys['Escape']=false; state='menu'; }
@@ -1851,7 +1874,7 @@ function loop() {
     if (keys['ArrowRight'] || keys['Enter']) {
       keys['ArrowRight'] = keys['Enter'] = false;
       if (isLast) {
-
+        if (!prsntMode && tutorialReturn === 'newgame') localStorage.setItem(TUTORIAL_SEEN_KEY, '1');
         if (tutorialReturn === 'newgame') { resetGame(0); }
         else if (tutorialReturn === 'paused') { state = 'paused'; }
         else if (tutorialReturn === 'dead') { state = 'dead'; }
