@@ -44,7 +44,7 @@ function initAudio() {
     catch(e) {}
   }
 }
-function bgmPlay() { if (bgMusic) bgMusic.play().catch(() => {}); }
+function bgmPlay() { if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); if (bgMusic) bgMusic.play().catch(() => {}); }
 function bgmStop() { bgMusic.pause(); bgMusic.currentTime = 0; }
 
 function sfx(freq, dur, type, sweep, vol) {
