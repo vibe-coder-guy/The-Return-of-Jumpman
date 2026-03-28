@@ -159,6 +159,7 @@ addEventListener('keydown', e => {
     }
     if (menuTypeBuffer === 'gamemode') {
       prsntMode = false;
+      unlockedLevels = parseInt(localStorage.getItem(UNLOCKED_LEVELS_KEY) || '1', 10);
     }
     menuTypeBuffer = '';
   }
