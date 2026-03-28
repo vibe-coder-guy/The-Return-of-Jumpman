@@ -13,7 +13,7 @@
 </head>
 <body>
   <canvas id="c"></canvas>
-  <div id="info">WASD/Arrows=Move &nbsp;|&nbsp; Space/Up/W=Jump &nbsp;|&nbsp; Q=Shoot &nbsp;|&nbsp; Stomp donkeys &nbsp;|&nbsp; Red mushroom=Grow &nbsp;|&nbsp; Blue mushroom=DG Boss! &nbsp;|&nbsp; M=Mute &nbsp;|&nbsp; Esc=Pause</div>
+  <div id="info">WASD/Arrows=Move &nbsp;|&nbsp; Space/Up/W=Jump &nbsp;|&nbsp; Q=Shoot &nbsp;|&nbsp; Stomp donkeys &nbsp;|&nbsp; Red mushroom=Grow &nbsp;|&nbsp; Blue mushroom=DG Boss! &nbsp;|&nbsp; Esc=Pause</div>
   <script>
 'use strict';
 
@@ -163,7 +163,6 @@ addEventListener('keydown', e => {
     }
     menuTypeBuffer = '';
   }
-  if (e.code === 'KeyM') { muted = !muted; if (masterGain) masterGain.gain.value = muted ? 0 : 0.6; }
   if (e.code === 'Escape') {
     if (state === 'playing') { state = 'paused'; pauseSelection = 0; bgMusic.pause(); }
     else if (state === 'paused') { state = 'playing'; bgmPlay(); }
@@ -1700,7 +1699,6 @@ const TUTORIAL_PAGES = [
       ['← → or A D', 'Move left and right'],
       ['Space / ↑ / W', 'Jump'],
       ['Esc', 'Pause the game'],
-      ['M', 'Mute / unmute music'],
     ],
     tip: 'You start every level with 5 seconds of invincibility!',
     tipCol: '#00ff88',
